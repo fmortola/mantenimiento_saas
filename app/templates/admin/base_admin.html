@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block body_class %}has-sidebar{% endblock %}
+
+{% block content %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="sidebar bg-dark text-white">
+        <div class="sidebar-header p-3 border-bottom border-secondary">
+            <h5 class="mb-0"><i class="bi bi-gear"></i> Admin</h5>
+        </div>
+        <ul class="nav flex-column p-2">
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if request.endpoint == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'cliente' in request.endpoint }}" href="{{ url_for('admin.clientes') }}">
+                    <i class="bi bi-building"></i> Clientes
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'tecnico' in request.endpoint }}" href="{{ url_for('admin.tecnicos') }}">
+                    <i class="bi bi-person-badge"></i> Técnicos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'equipo' in request.endpoint }}" href="{{ url_for('admin.equipos') }}">
+                    <i class="bi bi-pc-display"></i> Equipos
+                </a>
+            </li>
+            <li class="nav-item mt-2">
+                <small class="text-muted px-3">TRABAJO</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'ticket' in request.endpoint }}" href="{{ url_for('admin.tickets') }}">
+                    <i class="bi bi-ticket"></i> Tickets
+                    {% set tickets_pendientes = Ticket.query.filter_by(estado='abierto').count() if Ticket else 0 %}
+                    {% if tickets_pendientes > 0 %}
+                    <span class="badge bg-danger">{{ tickets_pendientes }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'orden' in request.endpoint }}" href="{{ url_for('admin.ordenes') }}">
+                    <i class="bi bi-clipboard-check"></i> Órdenes
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'mantenimiento' in request.endpoint }}" href="{{ url_for('admin.mantenimientos') }}">
+                    <i class="bi bi-wrench"></i> Mantenimientos
+                </a>
+            </li>
+            <li class="nav-item mt-2">
+                <small class="text-muted px-3">PLANIFICACIÓN</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'agenda' in request.endpoint }}" href="{{ url_for('admin.agenda') }}">
+                    <i class="bi bi-calendar3"></i> Agenda
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'reporte' in request.endpoint }}" href="{{ url_for('admin.reportes') }}">
+                    <i class="bi bi-bar-chart"></i> Reportes
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Contenido principal -->
+    <div class="main-wrapper flex-grow-1">
+        <div class="container-fluid py-3">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- Bottom nav móvil -->
+{% block bottom_nav %}
+<nav class="bottom-nav d-lg-none">
+    <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">
+        <i class="bi bi-house"></i>
+        <span>Inicio</span>
+    </a>
+    <a href="{{ url_for('admin.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint }}">
+        <i class="bi bi-ticket"></i>
+        <span>Tickets</span>
+    </a>
+    <a href="{{ url_for('admin.ordenes') }}" class="{{ 'active' if 'orden' in request.endpoint }}">
+        <i class="bi bi-clipboard"></i>
+        <span>Órdenes</span>
+    </a>
+    <a href="{{ url_for('admin.clientes') }}" class="{{ 'active' if 'cliente' in request.endpoint }}">
+        <i class="bi bi-building"></i>
+        <span>Clientes</span>
+    </a>
+</nav>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<!-- Intro.js para tours guiados -->
+<link href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css" rel="stylesheet">
+<style>
+    /* Intro.js ajustes para móvil */
+    .introjs-tooltip {
+        max-width: 280px !important;
+        min-width: 250px !important;
+    }
+    .introjs-tooltiptext {
+        font-size: 14px;
+    }
+    /* Forzar tooltip siempre visible en pantalla */
+    .introjs-tooltip.introjs-floating {
+        position: fixed !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        margin: 0 !important;
+    }
+    /* Ajustes para iOS */
+    @supports (-webkit-touch-callout: none) {
+        .introjs-tooltip {
+            position: fixed !important;
+            left: 10px !important;
+            right: 10px !important;
+            bottom: auto !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            margin: 0 auto !important;
+            max-width: calc(100vw - 20px) !important;
+        }
+        .introjs-arrow {
+            display: none !important;
+        }
+        .introjs-helperLayer {
+            box-shadow: rgba(33, 33, 33, 0.5) 0px 0px 0px 5000px !important;
+        }
+    }
+    /* Botones más grandes para touch */
+    .introjs-button {
+        padding: 8px 16px !important;
+        font-size: 14px !important;
+        min-height: 44px !important;
+    }
+    .introjs-tooltipbuttons {
+        display: flex !important;
+        gap: 8px !important;
+        padding: 10px !important;
+    }
+    .introjs-skipbutton {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+    /* Modal propio para iOS */
+    .ios-tour-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .ios-tour-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 320px;
+        width: 100%;
+        position: relative;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .ios-tour-close {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        background: none;
+        border: none;
+        font-size: 28px;
+        color: #999;
+        padding: 0;
+        line-height: 1;
+    }
+    .ios-tour-titulo {
+        color: #2563eb;
+        margin-bottom: 12px;
+        padding-right: 30px;
+    }
+    .ios-tour-texto {
+        color: #333;
+        font-size: 15px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+    .ios-tour-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ios-tour-progreso {
+        color: #999;
+        font-size: 13px;
+    }
+    .ios-tour-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    .ios-tour-buttons .btn {
+        min-height: 44px;
+        padding: 8px 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    {% block cliente_content %}{% endblock %}
+</div>
+
+{% block bottom_nav %}
+<!-- Modal de tour para iOS -->
+<div id="ios-tour-modal" class="ios-tour-overlay" style="display: none;">
+    <div class="ios-tour-card">
+        <button class="ios-tour-close" onclick="cerrarTourIOS()">&times;</button>
+        <h5 id="ios-tour-titulo" class="ios-tour-titulo"></h5>
+        <p id="ios-tour-texto" class="ios-tour-texto"></p>
+        <div class="ios-tour-footer">
+            <span id="ios-tour-progreso" class="ios-tour-progreso"></span>
+            <div class="ios-tour-buttons">
+                <button id="ios-tour-anterior" class="btn btn-outline-secondary btn-sm" onclick="anteriorPasoIOS()">Anterior</button>
+                <button class="btn btn-primary btn-sm" onclick="siguientePasoIOS()">Siguiente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="bottom-nav" id="nav-inferior">
+    <a href="{{ url_for('cliente.dashboard') }}" class="{{ 'active' if request.endpoint == 'cliente.dashboard' }}" id="nav-inicio">
+        <i class="bi bi-house"></i>
+        <span>Inicio</span>
+    </a>
+    <a href="{{ url_for('cliente.ubicaciones') }}" class="{{ 'active' if 'ubicacion' in request.endpoint }}" id="nav-ubicaciones">
+        <i class="bi bi-geo-alt"></i>
+        <span>Ubicaciones</span>
+    </a>
+    <a href="{{ url_for('cliente.ticket_nuevo') }}" class="{{ 'active' if request.endpoint == 'cliente.ticket_nuevo' }}" id="nav-soporte">
+        <i class="bi bi-plus-circle"></i>
+        <span>Soporte</span>
+    </a>
+    <a href="{{ url_for('cliente.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint and request.endpoint != 'cliente.ticket_nuevo' }}" id="nav-tickets">
+        <i class="bi bi-ticket"></i>
+        <span>Tickets</span>
+    </a>
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Intro.js -->
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
+<script>
+// Detectar dispositivo
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isMobile = window.innerWidth <= 768;
+
+// Función para obtener posición según dispositivo
+function getPos(mobilePos) {
+    if (isIOS) return 'floating';
+    return mobilePos;
+}
+
+// Tours por página
+function getTours() {
+    const tours = {
+        'dashboard': [
+            {
+                title: 'Bienvenido',
+                intro: 'Te mostraremos cómo usar tu portal de cliente. Puedes salir del tour tocando fuera del cuadro.',
+                position: 'floating'
+            },
+            {
+                element: '#stats-ubicaciones',
+                title: 'Ubicaciones',
+                intro: 'Muestra el número de ubicaciones (sucursales, sedes) registradas de tu empresa.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#stats-equipos',
+                title: 'Equipos',
+                intro: 'Total de equipos de cómputo registrados en todas tus ubicaciones.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#stats-abiertos',
+                title: 'Tickets Abiertos',
+                intro: 'Solicitudes de soporte que aún están pendientes de resolver.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#stats-resueltos',
+                title: 'Tickets Resueltos',
+                intro: 'Solicitudes que ya fueron atendidas por nuestro equipo técnico.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#btn-soporte',
+                title: 'Solicitar Soporte',
+                intro: 'Presiona aquí para crear un nuevo ticket cuando necesites asistencia técnica.',
+                position: getPos('top')
+            },
+            {
+                element: '#tickets-recientes',
+                title: 'Tickets Recientes',
+                intro: 'Aquí verás tus últimas solicitudes y su estado actual.',
+                position: getPos('top')
+            },
+            {
+                title: '¡Listo!',
+                intro: 'Si necesitas ver esta guía nuevamente, presiona el icono de ayuda (?) en la barra superior.',
+                position: 'floating'
+            }
+        ],
+        'tickets': [
+            {
+                element: '#lista-tickets',
+                title: 'Lista de Tickets',
+                intro: 'Aquí verás todos tus tickets de soporte. Puedes tocar cualquiera para ver más detalles.',
+                position: getPos('bottom')
+            }
+        ],
+        'ticket_nuevo': [
+            {
+                element: '#form-ticket',
+                title: 'Formulario de Soporte',
+                intro: 'Completa este formulario para enviar tu solicitud de asistencia técnica.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#campo-asunto',
+                title: 'Asunto',
+                intro: 'Escribe un título breve que describa el problema. Ej: "Computadora no enciende"',
+                position: getPos('bottom')
+            },
+            {
+                element: '#campo-ubicacion',
+                title: 'Ubicación',
+                intro: 'Selecciona dónde está el problema (sucursal u oficina).',
+                position: getPos('bottom')
+            },
+            {
+                element: '#campo-prioridad',
+                title: 'Prioridad',
+                intro: 'Normal: puede esperar. Alta: necesita atención pronto. Urgente: requiere atención inmediata.',
+                position: getPos('bottom')
+            },
+            {
+                element: '#campo-descripcion',
+                title: 'Descripción',
+                intro: 'Explica el problema con el mayor detalle posible para que podamos ayudarte mejor.',
+                position: getPos('top')
+            }
+        ],
+        'ubicaciones': [
+            {
+                element: '#lista-ubicaciones',
+                title: 'Tus Ubicaciones',
+                intro: 'Aquí puedes ver todas las sucursales y sedes de tu empresa.',
+                position: getPos('bottom')
+            }
+        ]
+    };
+
+    // En móvil, agregar paso de navegación inferior
+    if (isMobile) {
+        // Insertar antes del último paso del dashboard
+        const dashTour = tours['dashboard'];
+        dashTour.splice(dashTour.length - 1, 0, {
+            element: '#nav-inferior',
+            title: 'Navegación',
+            intro: 'Usa estos botones para moverte entre las diferentes secciones del portal.',
+            position: getPos('top')
+        });
+
+        // Agregar paso de nuevo ticket en la lista de tickets
+        tours['tickets'].push({
+            element: '#nav-soporte',
+            title: 'Nuevo Ticket',
+            intro: 'Presiona aquí para crear una nueva solicitud de soporte.',
+            position: getPos('top')
+        });
+    }
+
+    return tours;
+}
+
+// Detectar página actual
+function detectarPagina() {
+    const path = window.location.pathname;
+    if (path.includes('/ticket/nuevo') || path.includes('/tickets/nuevo')) return 'ticket_nuevo';
+    if (path.includes('/tickets')) return 'tickets';
+    if (path.includes('/ubicaciones')) return 'ubicaciones';
+    if (path.includes('/dashboard') || path === '/cliente/' || path === '/cliente') return 'dashboard';
+    return 'dashboard';
+}
+
+// Tour simple para iOS (modal propio)
+let iosTourPasos = [];
+let iosTourIndex = 0;
+
+function mostrarTourIOS() {
+    if (iosTourIndex >= iosTourPasos.length) {
+        cerrarTourIOS();
+        return;
+    }
+
+    const paso = iosTourPasos[iosTourIndex];
+    const modal = document.getElementById('ios-tour-modal');
+    const titulo = document.getElementById('ios-tour-titulo');
+    const texto = document.getElementById('ios-tour-texto');
+    const progreso = document.getElementById('ios-tour-progreso');
+    const btnAnterior = document.getElementById('ios-tour-anterior');
+
+    titulo.textContent = paso.title || '';
+    texto.textContent = paso.intro;
+    progreso.textContent = `${iosTourIndex + 1} / ${iosTourPasos.length}`;
+    btnAnterior.style.display = iosTourIndex === 0 ? 'none' : 'inline-block';
+
+    modal.style.display = 'flex';
+}
+
+function siguientePasoIOS() {
+    iosTourIndex++;
+    mostrarTourIOS();
+}
+
+function anteriorPasoIOS() {
+    if (iosTourIndex > 0) {
+        iosTourIndex--;
+        mostrarTourIOS();
+    }
+}
+
+function cerrarTourIOS() {
+    document.getElementById('ios-tour-modal').style.display = 'none';
+    iosTourIndex = 0;
+}
+
+// Iniciar tour
+function iniciarTour() {
+    const pagina = detectarPagina();
+    const tours = getTours();
+    let pasos = tours[pagina] || tours['dashboard'];
+
+    // En iOS, usar modal propio
+    if (isIOS) {
+        iosTourPasos = pasos;
+        iosTourIndex = 0;
+        mostrarTourIOS();
+        return;
+    }
+
+    // Filtrar pasos cuyos elementos existen
+    pasos = pasos.filter(paso => {
+        if (!paso.element) return true;
+        return document.querySelector(paso.element);
+    });
+
+    if (pasos.length === 0) {
+        introJs().setOptions({
+            steps: [{
+                title: 'Bienvenido',
+                intro: 'Este es tu portal de cliente. Desde aquí puedes crear tickets de soporte y ver el estado de tus solicitudes.'
+            }],
+            nextLabel: 'Siguiente',
+            prevLabel: 'Anterior',
+            doneLabel: 'Entendido',
+            showProgress: true,
+            showBullets: true
+        }).start();
+        return;
+    }
+
+    introJs().setOptions({
+        steps: pasos,
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
+        doneLabel: 'Entendido',
+        showProgress: true,
+        showBullets: true,
+        exitOnOverlayClick: true,
+        scrollToElement: true
+    }).start();
+}
+
+// Mostrar tour automático en primera visita
+document.addEventListener('DOMContentLoaded', function() {
+    const tourVisto = localStorage.getItem('tour_cliente_visto');
+    if (!tourVisto && detectarPagina() === 'dashboard') {
+        // Esperar un momento para que cargue todo
+        setTimeout(function() {
+            iniciarTour();
+            localStorage.setItem('tour_cliente_visto', 'true');
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

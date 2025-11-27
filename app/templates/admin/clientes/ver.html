@@ -1,0 +1,154 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ cliente.nombre }} - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.clientes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row g-3">
+    <!-- Info del Cliente -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Información</h6>
+                <a href="{{ url_for('admin.cliente_editar', id=cliente.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <h5>{{ cliente.nombre }}</h5>
+                {% if cliente.rif %}<p class="text-muted mb-2">{{ cliente.rif }}</p>{% endif %}
+
+                <hr>
+
+                {% if cliente.persona_contacto %}
+                <p class="mb-1"><i class="bi bi-person text-muted"></i> {{ cliente.persona_contacto }}</p>
+                {% endif %}
+                {% if cliente.telefono_principal %}
+                <p class="mb-1"><i class="bi bi-telephone text-muted"></i> {{ cliente.telefono_principal }}</p>
+                {% endif %}
+                {% if cliente.telefono_secundario %}
+                <p class="mb-1"><i class="bi bi-telephone text-muted"></i> {{ cliente.telefono_secundario }}</p>
+                {% endif %}
+                {% if cliente.email %}
+                <p class="mb-1"><i class="bi bi-envelope text-muted"></i> {{ cliente.email }}</p>
+                {% endif %}
+
+                {% if cliente.notas %}
+                <hr>
+                <small class="text-muted">{{ cliente.notas }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Usuarios del cliente -->
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Usuarios</h6>
+                <a href="{{ url_for('admin.usuario_cliente_nuevo', cliente_id=cliente.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if cliente.usuarios %}
+                <ul class="list-group list-group-flush">
+                    {% for usuario in cliente.usuarios %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ usuario.nombre }}</strong><br>
+                            <small class="text-muted">{{ usuario.email }}</small>
+                        </div>
+                        <span class="badge bg-{{ 'success' if usuario.activo else 'secondary' }}">
+                            {{ 'Activo' if usuario.activo else 'Inactivo' }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted text-center py-3 mb-0">Sin usuarios</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Ubicaciones -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-geo-alt"></i> Ubicaciones</h6>
+                <a href="{{ url_for('admin.ubicacion_nueva', cliente_id=cliente.id) }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus"></i> Nueva Ubicación
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% set ubicaciones = cliente.ubicaciones.filter_by(activo=True).all() %}
+                {% if ubicaciones %}
+                <div class="list-group list-group-flush">
+                    {% for ubicacion in ubicaciones %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ ubicacion.nombre }}</h6>
+                                {% if ubicacion.direccion %}
+                                <p class="mb-1 text-muted small">
+                                    <i class="bi bi-geo-alt"></i> {{ ubicacion.direccion }}
+                                    {% if ubicacion.ciudad %}, {{ ubicacion.ciudad }}{% endif %}
+                                </p>
+                                {% endif %}
+                                {% if ubicacion.persona_contacto %}
+                                <small class="text-muted"><i class="bi bi-person"></i> {{ ubicacion.persona_contacto }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-info mb-2">{{ ubicacion.equipos.filter_by(activo=True).count() }} equipos</span>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.ubicacion_ver', id=ubicacion.id) }}" class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.ubicacion_editar', id=ubicacion.id) }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-geo-alt text-muted" style="font-size: 2rem;"></i>
+                    <p class="text-muted mt-2">No hay ubicaciones registradas</p>
+                    <a href="{{ url_for('admin.ubicacion_nueva', cliente_id=cliente.id) }}" class="btn btn-primary btn-sm">
+                        Agregar ubicación
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Acciones Rápidas -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Acciones Rápidas</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('admin.orden_nueva') }}?cliente_id={{ cliente.id }}" class="btn btn-outline-primary">
+                        <i class="bi bi-clipboard-plus"></i> Nueva Orden
+                    </a>
+                    <a href="{{ url_for('admin.mantenimiento_nuevo') }}?cliente_id={{ cliente.id }}" class="btn btn-outline-success">
+                        <i class="bi bi-wrench"></i> Programar Mantenimiento
+                    </a>
+                    <a href="{{ url_for('admin.tickets', cliente_id=cliente.id) }}" class="btn btn-outline-info">
+                        <i class="bi bi-ticket"></i> Ver Tickets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Mis Ubicaciones{% endblock %}
+
+{% block cliente_content %}
+<h4 class="mb-3"><i class="bi bi-geo-alt"></i> Mis Ubicaciones</h4>
+
+{% if ubicaciones %}
+<div class="list-group" id="lista-ubicaciones">
+    {% for ubicacion in ubicaciones %}
+    <a href="{{ url_for('cliente.ubicacion_ver', id=ubicacion.id) }}" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1">{{ ubicacion.nombre }}</h6>
+                <p class="mb-0 small text-muted">{{ ubicacion.direccion or 'Sin dirección' }}</p>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-info">{{ ubicacion.equipos.filter_by(activo=True).count() }} equipos</span>
+                <i class="bi bi-chevron-right ms-2"></i>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-geo-alt text-muted" style="font-size: 3rem;"></i>
+    <p class="text-muted mt-2">No hay ubicaciones registradas</p>
+</div>
+{% endif %}
+{% endblock %}

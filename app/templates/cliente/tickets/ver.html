@@ -1,0 +1,101 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Ticket {{ ticket.numero }}{% endblock %}
+
+{% block cliente_content %}
+<a href="{{ url_for('cliente.tickets') }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0">{{ ticket.numero }}</h5>
+            <small class="text-muted">{{ ticket.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</small>
+        </div>
+        <span class="badge bg-{{ 'success' if ticket.estado == 'resuelto' else 'warning' if ticket.estado in ['asignado', 'en_progreso'] else 'danger' if ticket.estado == 'abierto' else 'secondary' }} fs-6">
+            {{ ticket.estado.upper() }}
+        </span>
+    </div>
+    <div class="card-body">
+        <h6>{{ ticket.asunto }}</h6>
+
+        <div class="mb-3">
+            <span class="badge bg-info">{{ ticket.tipo or 'General' }}</span>
+            <span class="badge bg-{{ 'danger' if ticket.prioridad == 'urgente' else 'warning' if ticket.prioridad == 'alta' else 'secondary' }}">
+                {{ ticket.prioridad }}
+            </span>
+        </div>
+
+        {% if ticket.ubicacion %}
+        <p class="mb-2 small text-muted">
+            <i class="bi bi-geo-alt"></i> {{ ticket.ubicacion.nombre }}
+        </p>
+        {% endif %}
+
+        {% if ticket.equipo %}
+        <p class="mb-2 small">
+            <i class="bi bi-pc-display text-muted"></i>
+            {{ ticket.equipo.tipo }} - {{ ticket.equipo.nombre or ticket.equipo.marca }}
+        </p>
+        {% endif %}
+
+        <hr>
+
+        <h6>Descripción:</h6>
+        <p>{{ ticket.descripcion }}</p>
+    </div>
+</div>
+
+<!-- Estado del ticket -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex align-items-center">
+            {% if ticket.estado == 'abierto' %}
+            <i class="bi bi-hourglass-split text-warning fs-3 me-3"></i>
+            <div>
+                <strong>En espera de asignación</strong>
+                <p class="mb-0 small text-muted">Tu solicitud ha sido recibida y será atendida pronto.</p>
+            </div>
+            {% elif ticket.estado == 'asignado' %}
+            <i class="bi bi-person-check text-primary fs-3 me-3"></i>
+            <div>
+                <strong>Asignado a técnico</strong>
+                <p class="mb-0 small text-muted">{{ ticket.asignado_a.nombre if ticket.asignado_a else 'Un técnico' }} está revisando tu solicitud.</p>
+            </div>
+            {% elif ticket.estado == 'en_progreso' %}
+            <i class="bi bi-tools text-info fs-3 me-3"></i>
+            <div>
+                <strong>En proceso</strong>
+                <p class="mb-0 small text-muted">Se está trabajando en la solución.</p>
+            </div>
+            {% elif ticket.estado == 'resuelto' %}
+            <i class="bi bi-check-circle text-success fs-3 me-3"></i>
+            <div>
+                <strong>Resuelto</strong>
+                {% if ticket.fecha_resolucion %}
+                <p class="mb-0 small text-muted">{{ ticket.fecha_resolucion.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+            </div>
+            {% elif ticket.estado == 'cerrado' %}
+            <i class="bi bi-archive text-secondary fs-3 me-3"></i>
+            <div>
+                <strong>Cerrado</strong>
+                <p class="mb-0 small text-muted">Este ticket ha sido cerrado.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if ticket.respuesta_admin %}
+<div class="card mb-3 border-success">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0"><i class="bi bi-check-circle"></i> Solución</h6>
+    </div>
+    <div class="card-body">
+        <p class="mb-0">{{ ticket.respuesta_admin }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

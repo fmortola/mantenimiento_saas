@@ -1,0 +1,150 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Reporte de Tickets - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-ticket"></i> Reporte de Tickets</h4>
+    <a href="{{ url_for('admin.reportes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Desde</label>
+                <input type="date" class="form-control" name="desde" value="{{ fecha_desde.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Hasta</label>
+                <input type="date" class="form-control" name="hasta" value="{{ fecha_hasta.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" name="cliente_id">
+                    <option value="">-- Todos --</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select class="form-select" name="estado">
+                    <option value="">-- Todos --</option>
+                    {% for valor, texto in estados %}
+                    <option value="{{ valor }}" {% if estado_filtro == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ tickets|length }}</h3>
+                <small class="text-muted">Total Tickets</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ tickets|selectattr('estado', 'in', ['resuelto', 'cerrado'])|list|length }}</h3>
+                <small>Resueltos/Cerrados</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ tickets|selectattr('estado', 'in', ['asignado', 'en_progreso'])|list|length }}</h3>
+                <small>En Proceso</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ tickets|selectattr('estado', 'equalto', 'abierto')|list|length }}</h3>
+                <small>Sin Asignar</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón Exportar -->
+<div class="mb-3">
+    <a href="{{ url_for('admin.reporte_tickets', desde=fecha_desde.strftime('%Y-%m-%d'), hasta=fecha_hasta.strftime('%Y-%m-%d'), cliente_id=cliente_id or '', estado=estado_filtro or '', exportar='excel') }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+    </a>
+</div>
+
+<!-- Tabla -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if tickets %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>N&uacute;mero</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Asunto</th>
+                        <th>Estado</th>
+                        <th>Prioridad</th>
+                        <th>T&eacute;cnicos</th>
+                        <th>Resoluci&oacute;n</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('admin.ticket_ver', id=ticket.id) }}">{{ ticket.numero }}</a>
+                        </td>
+                        <td>{{ ticket.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ ticket.cliente.nombre }}</td>
+                        <td class="text-truncate" style="max-width: 200px;">{{ ticket.asunto }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if ticket.estado in ['resuelto', 'cerrado'] else 'primary' if ticket.estado in ['asignado', 'en_progreso'] else 'danger' }}">
+                                {{ ticket.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if ticket.prioridad == 'urgente' else 'warning' if ticket.prioridad == 'alta' else 'info' }}">
+                                {{ ticket.prioridad }}
+                            </span>
+                        </td>
+                        <td>
+                            {% for t in ticket.tecnicos %}
+                            <span class="badge bg-info">{{ t.nombre.split()[0] }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ ticket.fecha_resolucion.strftime('%d/%m/%Y') if ticket.fecha_resolucion else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <p class="text-muted">No hay tickets en el per&iacute;odo seleccionado</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

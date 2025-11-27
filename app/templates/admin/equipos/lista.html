@@ -1,0 +1,155 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Equipos - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-pc-display"></i> Equipos</h4>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" name="cliente_id" id="selectCliente" onchange="cargarUbicaciones()">
+                    <option value="">-- Seleccionar Cliente --</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente_id == cliente.id %}selected{% endif %}>
+                        {{ cliente.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Ubicaci&oacute;n</label>
+                <select class="form-select" name="ubicacion_id" id="selectUbicacion">
+                    <option value="">-- Todas las ubicaciones --</option>
+                    {% for ubicacion in ubicaciones %}
+                    <option value="{{ ubicacion.id }}" {% if ubicacion_id == ubicacion.id %}selected{% endif %}>
+                        {{ ubicacion.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{{ url_for('admin.equipos') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Mensaje según estado de filtros -->
+{% if not cliente_id %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Selecciona un <strong>cliente</strong> para comenzar
+</div>
+{% elif not ubicacion_id %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Ahora selecciona una <strong>ubicaci&oacute;n</strong> para ver sus equipos
+</div>
+{% else %}
+<div class="alert alert-success">
+    <i class="bi bi-check-circle"></i>
+    Mostrando <strong>{{ equipos|length }}</strong> equipos en esta ubicaci&oacute;n
+</div>
+{% endif %}
+
+<!-- Lista de equipos -->
+{% if equipos %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Nombre/Identificaci&oacute;n</th>
+                        <th>Marca/Modelo</th>
+                        <th>Serial</th>
+                        <th>Departamento</th>
+                        <th>Condici&oacute;n</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for equipo in equipos %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ equipo.tipo }}</span></td>
+                        <td><strong>{{ equipo.nombre or '-' }}</strong></td>
+                        <td>{{ equipo.marca or '' }} {{ equipo.modelo or '' }}</td>
+                        <td><small class="text-muted">{{ equipo.serial or '-' }}</small></td>
+                        <td>{{ equipo.departamento or '-' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if equipo.condicion in ['bueno', 'excelente'] else 'warning' if equipo.condicion == 'regular' else 'danger' }}">
+                                {{ equipo.condicion or 'N/A' }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.equipo_editar', id=equipo.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Agregar equipo si hay ubicación seleccionada -->
+{% if ubicacion_id %}
+<div class="mt-3">
+    <a href="{{ url_for('admin.equipo_nuevo', ubicacion_id=ubicacion_id) }}" class="btn btn-success">
+        <i class="bi bi-plus-lg"></i> Agregar Equipo a esta Ubicaci&oacute;n
+    </a>
+</div>
+{% endif %}
+
+{% elif cliente_id %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-pc-display text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-2">No hay equipos registrados en esta ubicaci&oacute;n</p>
+        {% if ubicacion_id %}
+        <a href="{{ url_for('admin.equipo_nuevo', ubicacion_id=ubicacion_id) }}" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> Agregar Primer Equipo
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cargarUbicaciones() {
+    const clienteId = document.getElementById('selectCliente').value;
+    const selectUbicacion = document.getElementById('selectUbicacion');
+
+    selectUbicacion.innerHTML = '<option value="">-- Todas las ubicaciones --</option>';
+
+    if (clienteId) {
+        fetch(`/admin/api/clientes/${clienteId}/ubicaciones`)
+            .then(r => r.json())
+            .then(ubicaciones => {
+                ubicaciones.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u.id;
+                    option.textContent = u.nombre;
+                    selectUbicacion.appendChild(option);
+                });
+            });
+    }
+}
+</script>
+{% endblock %}

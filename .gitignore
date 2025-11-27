@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Uploads (keep folder structure)
+app/static/images/uploads/*
+!app/static/images/uploads/.gitkeep
+
+# Claude
+.claude/
+
+# Byte-compiled
+*.pyc
+
+# Distribution
+dist/
+build/
+*.egg-info/

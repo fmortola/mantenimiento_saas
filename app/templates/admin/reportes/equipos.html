@@ -1,0 +1,198 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Inventario de Equipos - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-pc-display"></i> Inventario de Equipos</h4>
+    <a href="{{ url_for('admin.reportes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" name="cliente_id" id="selectCliente" onchange="cargarUbicaciones()">
+                    <option value="">-- Todos --</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Ubicaci&oacute;n</label>
+                <select class="form-select" name="ubicacion_id" id="selectUbicacion">
+                    <option value="">-- Todas --</option>
+                    {% for ubicacion in ubicaciones %}
+                    <option value="{{ ubicacion.id }}" {% if ubicacion_id == ubicacion.id %}selected{% endif %}>{{ ubicacion.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo de Equipo</label>
+                <select class="form-select" name="tipo">
+                    <option value="">-- Todos --</option>
+                    {% for valor, texto in tipos_equipo %}
+                    <option value="{{ valor }}" {% if tipo_filtro == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{{ url_for('admin.reporte_equipos') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ equipos|length }}</h3>
+                <small class="text-muted">Total Equipos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ equipos|selectattr('condicion', 'in', ['bueno', 'excelente'])|list|length }}</h3>
+                <small>Buen Estado</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ equipos|selectattr('condicion', 'equalto', 'regular')|list|length }}</h3>
+                <small>Estado Regular</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ equipos|selectattr('condicion', 'equalto', 'malo')|list|length }}</h3>
+                <small>Mal Estado</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón Exportar -->
+<div class="mb-3">
+    <a href="{{ url_for('admin.reporte_equipos', cliente_id=cliente_id or '', ubicacion_id=ubicacion_id or '', tipo=tipo_filtro or '', exportar='excel') }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+    </a>
+</div>
+
+<!-- Tabla -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if equipos %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Ubicaci&oacute;n</th>
+                        <th>Tipo</th>
+                        <th>Nombre</th>
+                        <th>Marca/Modelo</th>
+                        <th>Serial</th>
+                        <th>Departamento</th>
+                        <th>Condici&oacute;n</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for equipo in equipos %}
+                    <tr>
+                        <td>{{ equipo.ubicacion.cliente.nombre }}</td>
+                        <td>{{ equipo.ubicacion.nombre }}</td>
+                        <td><span class="badge bg-secondary">{{ equipo.tipo }}</span></td>
+                        <td>{{ equipo.nombre or '-' }}</td>
+                        <td>{{ equipo.marca or '' }} {{ equipo.modelo or '' }}</td>
+                        <td><small class="text-muted">{{ equipo.serial or '-' }}</small></td>
+                        <td>{{ equipo.departamento or '-' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if equipo.condicion in ['bueno', 'excelente'] else 'warning' if equipo.condicion == 'regular' else 'danger' }}">
+                                {{ equipo.condicion or 'N/A' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-pc-display text-muted" style="font-size: 3rem;"></i>
+            <p class="text-muted mt-3">No hay equipos con los filtros seleccionados</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resumen por Tipo -->
+{% if equipos %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Distribuci&oacute;n por Tipo</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% set tipos_count = {} %}
+            {% for equipo in equipos %}
+                {% if equipo.tipo in tipos_count %}
+                    {% set _ = tipos_count.update({equipo.tipo: tipos_count[equipo.tipo] + 1}) %}
+                {% else %}
+                    {% set _ = tipos_count.update({equipo.tipo: 1}) %}
+                {% endif %}
+            {% endfor %}
+            {% for tipo, count in tipos_count.items() %}
+            <div class="col-md-3 col-6 mb-2">
+                <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                    <span>{{ tipo }}</span>
+                    <span class="badge bg-primary">{{ count }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cargarUbicaciones() {
+    const clienteId = document.getElementById('selectCliente').value;
+    const selectUbicacion = document.getElementById('selectUbicacion');
+
+    selectUbicacion.innerHTML = '<option value="">-- Todas --</option>';
+
+    if (clienteId) {
+        fetch(`/admin/api/clientes/${clienteId}/ubicaciones`)
+            .then(r => r.json())
+            .then(ubicaciones => {
+                ubicaciones.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u.id;
+                    option.textContent = u.nombre;
+                    selectUbicacion.appendChild(option);
+                });
+            });
+    }
+}
+</script>
+{% endblock %}

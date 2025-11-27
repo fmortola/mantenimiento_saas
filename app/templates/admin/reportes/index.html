@@ -1,0 +1,99 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Reportes - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-bar-chart"></i> Reportes</h4>
+</div>
+
+<div class="row g-3">
+    <!-- Reportes Operativos -->
+    <div class="col-12">
+        <h5 class="text-muted mb-3"><i class="bi bi-clipboard-data"></i> Reportes Operativos</h5>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-clipboard-check text-success" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">&Oacute;rdenes de Trabajo</h5>
+                <p class="text-muted small">Filtrar por fecha, cliente, t&eacute;cnico y estado</p>
+                <a href="{{ url_for('admin.reporte_ordenes') }}" class="btn btn-outline-success">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-wrench text-info" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">Mantenimientos</h5>
+                <p class="text-muted small">Por per&iacute;odo, cliente y estado</p>
+                <a href="{{ url_for('admin.reporte_mantenimientos') }}" class="btn btn-outline-info">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-ticket text-primary" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">Tickets</h5>
+                <p class="text-muted small">Por per&iacute;odo, cliente y estado</p>
+                <a href="{{ url_for('admin.reporte_tickets') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reportes de Gestión -->
+    <div class="col-12 mt-4">
+        <h5 class="text-muted mb-3"><i class="bi bi-graph-up"></i> Reportes de Gesti&oacute;n</h5>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-person-badge text-warning" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">Productividad T&eacute;cnicos</h5>
+                <p class="text-muted small">Trabajos completados por t&eacute;cnico</p>
+                <a href="{{ url_for('admin.reporte_productividad') }}" class="btn btn-outline-warning">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-building text-secondary" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">Historial por Cliente</h5>
+                <p class="text-muted small">Todo el trabajo realizado para un cliente</p>
+                <a href="{{ url_for('admin.reporte_cliente') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-pc-display text-danger" style="font-size: 3rem;"></i>
+                <h5 class="mt-3">Inventario de Equipos</h5>
+                <p class="text-muted small">Equipos por cliente, ubicaci&oacute;n y tipo</p>
+                <a href="{{ url_for('admin.reporte_equipos') }}" class="btn btn-outline-danger">
+                    <i class="bi bi-eye"></i> Ver Reporte
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

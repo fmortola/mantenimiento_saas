@@ -1,0 +1,214 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Mantenimiento {{ mantenimiento.numero }}{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.mantenimientos') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ mantenimiento.numero }}</h6>
+                <span class="badge bg-{{ 'success' if mantenimiento.estado == 'completado' else 'primary' if mantenimiento.estado == 'en_progreso' else 'warning' }}">
+                    {{ mantenimiento.estado }}
+                </span>
+            </div>
+            <div class="card-body">
+                <h5>{{ mantenimiento.titulo }}</h5>
+                <p class="text-muted">{{ mantenimiento.descripcion or '' }}</p>
+
+                <hr>
+
+                <p class="mb-1"><strong>Cliente:</strong><br>{{ mantenimiento.cliente.nombre }}</p>
+                <p class="mb-1"><strong>Ubicación:</strong><br>{{ mantenimiento.ubicacion.nombre }}</p>
+                {% if mantenimiento.ubicacion.direccion %}
+                <p class="small text-muted">{{ mantenimiento.ubicacion.direccion }}</p>
+                {% endif %}
+
+                <hr>
+
+                <p class="mb-1"><strong>Técnicos asignados:</strong></p>
+                {% for tecnico in mantenimiento.tecnicos %}
+                <span class="badge bg-info">{{ tecnico.nombre }}</span>
+                {% endfor %}
+
+                <hr>
+
+                {% if mantenimiento.fecha_programada %}
+                <p class="mb-1"><small><strong>Programado:</strong> {{ mantenimiento.fecha_programada.strftime('%d/%m/%Y') }}</small></p>
+                {% endif %}
+                {% if mantenimiento.fecha_inicio %}
+                <p class="mb-1"><small><strong>Iniciado:</strong> {{ mantenimiento.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}</small></p>
+                {% endif %}
+                {% if mantenimiento.fecha_fin %}
+                <p class="mb-1"><small><strong>Finalizado:</strong> {{ mantenimiento.fecha_fin.strftime('%d/%m/%Y %H:%M') }}</small></p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="card mt-3">
+            <div class="card-body">
+                {% if mantenimiento.estado == 'programado' %}
+                <div class="alert alert-info mb-2">
+                    <small><i class="bi bi-info-circle"></i> El mantenimiento iniciar&aacute; cuando el t&eacute;cnico comience a trabajar</small>
+                </div>
+                {% endif %}
+
+                {% if mantenimiento.estado != 'completado' %}
+                <a href="{{ url_for('admin.mantenimiento_editar', id=mantenimiento.id) }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-pencil"></i> Editar Mantenimiento
+                </a>
+                {% endif %}
+
+                {% if mantenimiento.estado == 'en_progreso' %}
+                <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#modalFinalizar">
+                    <i class="bi bi-check-lg"></i> Finalizar Mantenimiento
+                </button>
+                {% endif %}
+
+                {% if mantenimiento.estado == 'completado' %}
+                <a href="{{ url_for('api.pdf_mantenimiento', id=mantenimiento.id) }}" class="btn btn-outline-primary w-100" target="_blank">
+                    <i class="bi bi-file-pdf"></i> Generar PDF
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary w-100" disabled>
+                    <i class="bi bi-file-pdf"></i> PDF (disponible al finalizar)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <!-- Barra de Progreso -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Progreso del Mantenimiento</span>
+                    <strong id="progreso-texto">{{ mantenimiento.progreso_porcentaje() }}%</strong>
+                </div>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar bg-success progress-bar-striped" id="progreso-barra"
+                         style="width: {{ mantenimiento.progreso_porcentaje() }}%">
+                        {{ mantenimiento.equipos_con_mantenimiento() }} de {{ mantenimiento.equipos_mantenimiento.count() }} equipos
+                    </div>
+                </div>
+                <div class="row mt-3 text-center">
+                    <div class="col-4">
+                        <h4 class="text-warning mb-0">{{ mantenimiento.equipos_pendientes() }}</h4>
+                        <small>Pendientes</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-primary mb-0">{{ mantenimiento.equipos_en_progreso() }}</h4>
+                        <small>En Progreso</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-success mb-0">{{ mantenimiento.equipos_con_mantenimiento() }}</h4>
+                        <small>Completados</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Equipos -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-pc-display"></i> Equipos</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Tipo</th>
+                                <th>Depto.</th>
+                                <th>Estado Mant.</th>
+                                <th>Técnico</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for me in mantenimiento.equipos_mantenimiento %}
+                            <tr>
+                                <td>
+                                    <strong>{{ me.equipo.nombre or me.equipo.marca }}</strong><br>
+                                    <small class="text-muted">{{ me.equipo.marca }} {{ me.equipo.modelo }}</small>
+                                </td>
+                                <td><span class="badge bg-secondary">{{ me.equipo.tipo }}</span></td>
+                                <td>{{ me.equipo.departamento or '-' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if me.estado == 'completado' else 'primary' if me.estado == 'en_progreso' else 'warning' }}">
+                                        {{ me.estado }}
+                                    </span>
+                                </td>
+                                <td>{{ me.tecnico.nombre if me.tecnico else '-' }}</td>
+                            </tr>
+                            {% if me.descripcion_trabajo %}
+                            <tr class="table-light">
+                                <td colspan="5">
+                                    <small><strong>Trabajo realizado:</strong> {{ me.descripcion_trabajo }}</small>
+                                    {% if me.tiempo_minutos %}
+                                    <br><small class="text-muted">Tiempo: {{ me.tiempo_minutos }} min</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Finalizar -->
+<div class="modal fade" id="modalFinalizar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.mantenimiento_finalizar', id=mantenimiento.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Finalizar Mantenimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>{{ mantenimiento.equipos_con_mantenimiento() }}</strong> de <strong>{{ mantenimiento.equipos_mantenimiento.count() }}</strong> equipos completados.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas de cierre</label>
+                        <textarea class="form-control" name="notas_cierre" rows="3"
+                                  placeholder="Observaciones generales del mantenimiento..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Finalizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Actualizar progreso cada 30 segundos
+setInterval(function() {
+    fetch('/api/mantenimiento/{{ mantenimiento.id }}/progreso')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('progreso-texto').textContent = data.porcentaje + '%';
+            document.getElementById('progreso-barra').style.width = data.porcentaje + '%';
+            document.getElementById('progreso-barra').textContent = data.completados + ' de ' + data.total + ' equipos';
+        });
+}, 30000);
+</script>
+{% endblock %}

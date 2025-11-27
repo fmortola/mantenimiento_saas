@@ -1,0 +1,207 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Agenda - Planificación{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-calendar3"></i> Agenda de Trabajo</h4>
+    <div class="text-muted">
+        <i class="bi bi-people"></i> {{ total_tecnicos }} técnicos disponibles
+    </div>
+</div>
+
+<!-- Filtros de fecha -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Desde</label>
+                <input type="date" class="form-control" name="desde" value="{{ fecha_inicio.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Hasta</label>
+                <input type="date" class="form-control" name="hasta" value="{{ fecha_fin.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{{ url_for('admin.agenda') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reiniciar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Leyenda -->
+<div class="mb-3">
+    <span class="badge bg-primary me-2"><i class="bi bi-clipboard"></i> Orden</span>
+    <span class="badge bg-success me-2"><i class="bi bi-tools"></i> Mantenimiento</span>
+    <span class="badge bg-warning text-dark me-2"><i class="bi bi-ticket"></i> Ticket</span>
+</div>
+
+<!-- Lista de días -->
+{% if eventos_por_dia %}
+    {% for dia, data in eventos_por_dia|dictsort %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center
+            {% if data.total_tecnicos >= total_tecnicos %}bg-danger text-white
+            {% elif data.total_tecnicos >= total_tecnicos * 0.7 %}bg-warning
+            {% else %}bg-light{% endif %}">
+            <div>
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-event"></i>
+                    {{ data.fecha.strftime('%A %d de %B, %Y') }}
+                </h5>
+            </div>
+            <div>
+                <span class="badge {% if data.total_tecnicos >= total_tecnicos %}bg-light text-danger{% else %}bg-secondary{% endif %} fs-6">
+                    <i class="bi bi-people-fill"></i> {{ data.total_tecnicos }}/{{ total_tecnicos }} técnicos ocupados
+                </span>
+                {% if data.total_tecnicos >= total_tecnicos %}
+                <span class="badge bg-light text-danger ms-2">
+                    <i class="bi bi-exclamation-triangle"></i> DÍA COMPLETO
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 100px;">Tipo</th>
+                            <th style="width: 120px;">Número</th>
+                            <th>Cliente / Ubicación</th>
+                            <th>Descripción</th>
+                            <th style="width: 100px;">Técnicos</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 80px;">Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evento in data.eventos %}
+                        <tr>
+                            <td>
+                                {% if evento.tipo == 'orden' %}
+                                <span class="badge bg-primary"><i class="bi bi-clipboard"></i> Orden</span>
+                                {% elif evento.tipo == 'mantenimiento' %}
+                                <span class="badge bg-success"><i class="bi bi-tools"></i> Mant.</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-ticket"></i> Ticket</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if evento.tipo == 'orden' %}
+                                <a href="{{ url_for('admin.orden_ver', id=evento.id) }}">{{ evento.numero }}</a>
+                                {% elif evento.tipo == 'mantenimiento' %}
+                                <a href="{{ url_for('admin.mantenimiento_ver', id=evento.id) }}">{{ evento.numero }}</a>
+                                {% else %}
+                                <a href="{{ url_for('admin.ticket_ver', id=evento.id) }}">{{ evento.numero }}</a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ evento.cliente }}</strong><br>
+                                <small class="text-muted"><i class="bi bi-geo-alt"></i> {{ evento.ubicacion }}</small>
+                            </td>
+                            <td>
+                                <small>{{ evento.descripcion }}</small>
+                            </td>
+                            <td>
+                                {% if evento.tecnicos > 0 %}
+                                <span class="badge bg-info" title="{{ evento.tecnicos_nombres|join(', ') }}" data-bs-toggle="tooltip">
+                                    <i class="bi bi-person"></i> {{ evento.tecnicos }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">Sin asignar</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if evento.estado == 'en_progreso' else 'warning' if evento.estado in ['asignado', 'programado'] else 'secondary' }}">
+                                    {{ evento.estado }}
+                                </span>
+                                {% if evento.prioridad == 'urgente' %}
+                                <span class="badge bg-danger">!</span>
+                                {% elif evento.prioridad == 'alta' %}
+                                <span class="badge bg-warning text-dark">!</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ evento.fecha.strftime('%H:%M') }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay trabajos programados para el período seleccionado.
+</div>
+{% endif %}
+
+<!-- Resumen -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Resumen del Período</h6>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <h3 class="text-primary">{{ eventos_por_dia|length }}</h3>
+                <small class="text-muted">Días con trabajo</small>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-primary">
+                    {% set total_ordenes = 0 %}
+                    {% for dia, data in eventos_por_dia.items() %}
+                        {% for e in data.eventos if e.tipo == 'orden' %}
+                            {% set total_ordenes = total_ordenes + 1 %}
+                        {% endfor %}
+                    {% endfor %}
+                    {{ total_ordenes }}
+                </h3>
+                <small class="text-muted">Órdenes</small>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-success">
+                    {% set total_mant = 0 %}
+                    {% for dia, data in eventos_por_dia.items() %}
+                        {% for e in data.eventos if e.tipo == 'mantenimiento' %}
+                            {% set total_mant = total_mant + 1 %}
+                        {% endfor %}
+                    {% endfor %}
+                    {{ total_mant }}
+                </h3>
+                <small class="text-muted">Mantenimientos</small>
+            </div>
+            <div class="col-md-3">
+                <h3 class="text-warning">
+                    {% set total_tickets = 0 %}
+                    {% for dia, data in eventos_por_dia.items() %}
+                        {% for e in data.eventos if e.tipo == 'ticket' %}
+                            {% set total_tickets = total_tickets + 1 %}
+                        {% endfor %}
+                    {% endfor %}
+                    {{ total_tickets }}
+                </h3>
+                <small class="text-muted">Tickets</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Activar tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+</script>
+{% endblock %}

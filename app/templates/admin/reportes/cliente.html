@@ -1,0 +1,241 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Historial por Cliente - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-building"></i> Historial por Cliente</h4>
+    <a href="{{ url_for('admin.reportes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Selector de Cliente -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label">Seleccionar Cliente</label>
+                <select class="form-select" name="cliente_id" onchange="this.form.submit()">
+                    <option value="">-- Seleccionar Cliente --</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}" {% if cliente and cliente.id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if cliente %}
+<!-- Info del Cliente -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>{{ cliente.nombre }}</h5>
+                <p class="text-muted mb-1">{{ cliente.rif or '' }}</p>
+                <p class="text-muted mb-1">{{ cliente.email or '' }}</p>
+                <p class="text-muted mb-0">{{ cliente.telefono_principal or '' }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <a href="{{ url_for('admin.reporte_cliente', cliente_id=cliente.id, exportar='excel') }}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar Todo a Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ ordenes|length }}</h3>
+                <small>&Oacute;rdenes de Trabajo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ mantenimientos|length }}</h3>
+                <small>Mantenimientos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ tickets|length }}</h3>
+                <small>Tickets</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ cliente.ubicaciones.count() }}</h3>
+                <small>Ubicaciones</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs" id="historialTab" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ordenes">
+            &Oacute;rdenes ({{ ordenes|length }})
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#mantenimientos">
+            Mantenimientos ({{ mantenimientos|length }})
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tickets">
+            Tickets ({{ tickets|length }})
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Órdenes -->
+    <div class="tab-pane fade show active" id="ordenes">
+        <div class="card border-top-0 rounded-0 rounded-bottom">
+            <div class="card-body p-0">
+                {% if ordenes %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>N&uacute;mero</th>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Descripci&oacute;n</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for orden in ordenes %}
+                            <tr>
+                                <td><a href="{{ url_for('admin.orden_ver', id=orden.id) }}">{{ orden.numero }}</a></td>
+                                <td>{{ orden.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ orden.tipo }}</td>
+                                <td class="text-truncate" style="max-width: 300px;">{{ orden.descripcion_solicitud }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if orden.estado == 'completado' else 'primary' if orden.estado == 'en_progreso' else 'warning' }}">
+                                        {{ orden.estado }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">No hay &oacute;rdenes registradas</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mantenimientos -->
+    <div class="tab-pane fade" id="mantenimientos">
+        <div class="card border-top-0 rounded-0 rounded-bottom">
+            <div class="card-body p-0">
+                {% if mantenimientos %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>N&uacute;mero</th>
+                                <th>Fecha</th>
+                                <th>Ubicaci&oacute;n</th>
+                                <th>T&iacute;tulo</th>
+                                <th>Estado</th>
+                                <th>Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mant in mantenimientos %}
+                            <tr>
+                                <td><a href="{{ url_for('admin.mantenimiento_ver', id=mant.id) }}">{{ mant.numero }}</a></td>
+                                <td>{{ mant.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ mant.ubicacion.nombre }}</td>
+                                <td>{{ mant.titulo }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if mant.estado == 'completado' else 'primary' if mant.estado == 'en_progreso' else 'warning' }}">
+                                        {{ mant.estado }}
+                                    </span>
+                                </td>
+                                <td>{{ mant.progreso_porcentaje() }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">No hay mantenimientos registrados</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tickets -->
+    <div class="tab-pane fade" id="tickets">
+        <div class="card border-top-0 rounded-0 rounded-bottom">
+            <div class="card-body p-0">
+                {% if tickets %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>N&uacute;mero</th>
+                                <th>Fecha</th>
+                                <th>Asunto</th>
+                                <th>Estado</th>
+                                <th>Prioridad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ticket in tickets %}
+                            <tr>
+                                <td><a href="{{ url_for('admin.ticket_ver', id=ticket.id) }}">{{ ticket.numero }}</a></td>
+                                <td>{{ ticket.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                                <td class="text-truncate" style="max-width: 300px;">{{ ticket.asunto }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if ticket.estado in ['resuelto', 'cerrado'] else 'primary' if ticket.estado in ['asignado', 'en_progreso'] else 'danger' }}">
+                                        {{ ticket.estado }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'danger' if ticket.prioridad == 'urgente' else 'warning' if ticket.prioridad == 'alta' else 'info' }}">
+                                        {{ ticket.prioridad }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">No hay tickets registrados</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">Selecciona un cliente para ver su historial completo</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

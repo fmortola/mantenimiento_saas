@@ -1,0 +1,80 @@
+{% extends "tecnico/base_tecnico.html" %}
+
+{% block title %}Ticket {{ ticket.numero }}{% endblock %}
+
+{% block tecnico_content %}
+<a href="{{ url_for('tecnico.tickets') }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0">{{ ticket.numero }}</h5>
+            <small class="text-muted">{{ ticket.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</small>
+        </div>
+        <span class="badge bg-{{ 'success' if ticket.estado == 'resuelto' else 'warning' }} fs-6">
+            {{ ticket.estado }}
+        </span>
+    </div>
+    <div class="card-body">
+        <h6>{{ ticket.asunto }}</h6>
+
+        <p class="mb-2">
+            <i class="bi bi-building text-muted"></i>
+            <strong>{{ ticket.cliente.nombre }}</strong>
+        </p>
+        {% if ticket.ubicacion %}
+        <p class="mb-2 small text-muted">
+            <i class="bi bi-geo-alt"></i> {{ ticket.ubicacion.nombre }}
+        </p>
+        {% endif %}
+
+        <hr>
+
+        <h6>Descripción:</h6>
+        <p>{{ ticket.descripcion }}</p>
+
+        {% if ticket.equipo %}
+        <hr>
+        <h6>Equipo relacionado:</h6>
+        <p>
+            <strong>{{ ticket.equipo.tipo }}</strong> - {{ ticket.equipo.nombre or ticket.equipo.marca }}<br>
+            <small class="text-muted">{{ ticket.equipo.marca }} {{ ticket.equipo.modelo }}</small>
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+{% if ticket.estado in ['asignado', 'en_progreso'] %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Resolver Ticket</h6>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('tecnico.ticket_resolver', id=ticket.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">Descripción de la solución *</label>
+                <textarea class="form-control" name="respuesta" rows="4" required
+                          placeholder="Describe cómo se resolvió el problema..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+                <i class="bi bi-check-lg"></i> Marcar como Resuelto
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if ticket.respuesta_admin %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Solución</h6>
+    </div>
+    <div class="card-body">
+        <p>{{ ticket.respuesta_admin }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

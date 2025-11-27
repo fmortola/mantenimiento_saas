@@ -1,0 +1,64 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Historial de Servicios{% endblock %}
+
+{% block cliente_content %}
+<h4 class="mb-3"><i class="bi bi-clock-history"></i> Historial de Servicios</h4>
+
+<!-- Órdenes de Trabajo -->
+{% if ordenes %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Órdenes de Trabajo Completadas</h6>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for orden in ordenes %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{ orden.numero }}</strong>
+                    <p class="mb-0 small">{{ orden.descripcion_solicitud[:100] }}...</p>
+                    <small class="text-muted">{{ orden.fecha_fin.strftime('%d/%m/%Y') if orden.fecha_fin else '' }}</small>
+                </div>
+                <a href="{{ url_for('api.pdf_orden', id=orden.id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                    <i class="bi bi-file-pdf"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Mantenimientos -->
+{% if mantenimientos %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Mantenimientos Completados</h6>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for mant in mantenimientos %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{ mant.numero }}</strong>
+                    <p class="mb-0 small">{{ mant.titulo }}</p>
+                    <small class="text-muted">{{ mant.ubicacion.nombre }} - {{ mant.fecha_fin.strftime('%d/%m/%Y') if mant.fecha_fin else '' }}</small>
+                </div>
+                <a href="{{ url_for('api.pdf_mantenimiento', id=mant.id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                    <i class="bi bi-file-pdf"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if not ordenes and not mantenimientos %}
+<div class="text-center py-5">
+    <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
+    <p class="text-muted mt-2">No hay historial de servicios</p>
+</div>
+{% endif %}
+{% endblock %}

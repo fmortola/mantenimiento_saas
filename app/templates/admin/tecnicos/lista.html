@@ -1,0 +1,61 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Técnicos - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-person-badge"></i> Técnicos</h4>
+    <a href="{{ url_for('admin.tecnico_nuevo') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nuevo Técnico
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if tecnicos %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Estado</th>
+                        <th>Órdenes Activas</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tecnico in tecnicos %}
+                    <tr>
+                        <td><strong>{{ tecnico.nombre }}</strong></td>
+                        <td>{{ tecnico.email }}</td>
+                        <td>{{ tecnico.telefono or '-' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if tecnico.activo else 'secondary' }}">
+                                {{ 'Activo' if tecnico.activo else 'Inactivo' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ tecnico.ordenes_asignadas | selectattr('estado', 'in', ['asignado', 'en_progreso']) | list | length }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.tecnico_editar', id=tecnico.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-person-badge text-muted" style="font-size: 3rem;"></i>
+            <p class="text-muted mt-2">No hay técnicos registrados</p>
+            <a href="{{ url_for('admin.tecnico_nuevo') }}" class="btn btn-primary">Agregar primer técnico</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

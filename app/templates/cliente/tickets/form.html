@@ -1,0 +1,105 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Nuevo Ticket{% endblock %}
+
+{% block cliente_content %}
+<a href="{{ url_for('cliente.tickets') }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<div class="card" id="form-ticket">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-ticket"></i> Solicitar Soporte</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label class="form-label">Tipo de Solicitud *</label>
+                <select class="form-select" name="tipo" id="selectTipo" required>
+                    {% for valor, texto in tipos %}
+                    <option value="{{ valor }}">{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3" id="campo-ubicacion">
+                <label class="form-label">Ubicación</label>
+                <select class="form-select" name="ubicacion_id" id="selectUbicacion">
+                    <option value="">-- Seleccionar ubicación --</option>
+                    {% for ubicacion in ubicaciones %}
+                    <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3" id="divEquipo" style="display: none;">
+                <label class="form-label">Equipo con problema</label>
+                <select class="form-select" name="equipo_id" id="selectEquipo">
+                    <option value="">-- Seleccionar primero la ubicación --</option>
+                </select>
+            </div>
+
+            <div class="mb-3" id="campo-asunto">
+                <label class="form-label">Asunto *</label>
+                <input type="text" class="form-control" name="asunto" required
+                       placeholder="Describe brevemente el problema">
+            </div>
+
+            <div class="mb-3" id="campo-descripcion">
+                <label class="form-label">Descripción detallada *</label>
+                <textarea class="form-control" name="descripcion" rows="4" required
+                          placeholder="Describe el problema o solicitud con el mayor detalle posible..."></textarea>
+            </div>
+
+            <div class="mb-3" id="campo-prioridad">
+                <label class="form-label">Prioridad</label>
+                <select class="form-select" name="prioridad">
+                    <option value="normal">Normal</option>
+                    <option value="alta">Alta - Afecta mi trabajo</option>
+                    <option value="urgente">Urgente - No puedo trabajar</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-send"></i> Enviar Solicitud
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const selectTipo = document.getElementById('selectTipo');
+const selectUbicacion = document.getElementById('selectUbicacion');
+const selectEquipo = document.getElementById('selectEquipo');
+const divEquipo = document.getElementById('divEquipo');
+
+selectTipo.addEventListener('change', function() {
+    if (this.value === 'problema_equipo') {
+        divEquipo.style.display = 'block';
+    } else {
+        divEquipo.style.display = 'none';
+    }
+});
+
+selectUbicacion.addEventListener('change', function() {
+    const ubicacionId = this.value;
+    if (!ubicacionId) {
+        selectEquipo.innerHTML = '<option value="">-- Seleccionar primero la ubicación --</option>';
+        return;
+    }
+
+    fetch(`/cliente/api/ubicaciones/${ubicacionId}/equipos`)
+        .then(r => r.json())
+        .then(equipos => {
+            selectEquipo.innerHTML = '<option value="">-- Seleccionar equipo --</option>';
+            equipos.forEach(e => {
+                selectEquipo.innerHTML += `<option value="${e.id}">${e.nombre} (${e.tipo})</option>`;
+            });
+        });
+});
+</script>
+{% endblock %}

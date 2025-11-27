@@ -1,0 +1,153 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Reporte de Órdenes - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> Reporte de &Oacute;rdenes de Trabajo</h4>
+    <a href="{{ url_for('admin.reportes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Desde</label>
+                <input type="date" class="form-control" name="desde" value="{{ fecha_desde.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Hasta</label>
+                <input type="date" class="form-control" name="hasta" value="{{ fecha_hasta.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" name="cliente_id">
+                    <option value="">-- Todos --</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">T&eacute;cnico</label>
+                <select class="form-select" name="tecnico_id">
+                    <option value="">-- Todos --</option>
+                    {% for tecnico in tecnicos %}
+                    <option value="{{ tecnico.id }}" {% if tecnico_id == tecnico.id %}selected{% endif %}>{{ tecnico.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <select class="form-select" name="estado">
+                    <option value="">-- Todos --</option>
+                    {% for valor, texto in estados %}
+                    <option value="{{ valor }}" {% if estado_filtro == valor %}selected{% endif %}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumen -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ ordenes|length }}</h3>
+                <small class="text-muted">Total &Oacute;rdenes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ ordenes|selectattr('estado', 'equalto', 'completado')|list|length }}</h3>
+                <small>Completadas</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ ordenes|selectattr('estado', 'equalto', 'en_progreso')|list|length }}</h3>
+                <small>En Progreso</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ ordenes|selectattr('estado', 'in', ['pendiente', 'asignado'])|list|length }}</h3>
+                <small>Pendientes</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón Exportar -->
+<div class="mb-3">
+    <a href="{{ url_for('admin.reporte_ordenes', desde=fecha_desde.strftime('%Y-%m-%d'), hasta=fecha_hasta.strftime('%Y-%m-%d'), cliente_id=cliente_id or '', tecnico_id=tecnico_id or '', estado=estado_filtro or '', exportar='excel') }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+    </a>
+</div>
+
+<!-- Tabla -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if ordenes %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>N&uacute;mero</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>T&eacute;cnicos</th>
+                        <th>Fecha Fin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for orden in ordenes %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('admin.orden_ver', id=orden.id) }}">{{ orden.numero }}</a>
+                        </td>
+                        <td>{{ orden.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ orden.cliente.nombre if orden.cliente else orden.cliente_rapido_nombre }}</td>
+                        <td>{{ orden.tipo }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if orden.estado == 'completado' else 'primary' if orden.estado == 'en_progreso' else 'warning' }}">
+                                {{ orden.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            {% for t in orden.tecnicos %}
+                            <span class="badge bg-info">{{ t.nombre.split()[0] }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ orden.fecha_fin.strftime('%d/%m/%Y') if orden.fecha_fin else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <p class="text-muted">No hay &oacute;rdenes en el per&iacute;odo seleccionado</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Editar' if equipo else 'Nuevo' }} Equipo{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.ubicacion_ver', id=ubicacion.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">{{ 'Editar' if equipo else 'Nuevo' }} Equipo - {{ ubicacion.nombre }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Tipo *</label>
+                    <select class="form-select" name="tipo" required>
+                        {% for valor, texto in tipos_equipo %}
+                        <option value="{{ valor }}" {{ 'selected' if equipo and equipo.tipo == valor else '' }}>{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nombre/Identificador</label>
+                    <input type="text" class="form-control" name="nombre" value="{{ equipo.nombre if equipo else '' }}"
+                           placeholder="Ej: PC Gerencia">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Departamento</label>
+                    <input type="text" class="form-control" name="departamento" value="{{ equipo.departamento if equipo else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Marca</label>
+                    <input type="text" class="form-control" name="marca" value="{{ equipo.marca if equipo else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Modelo</label>
+                    <input type="text" class="form-control" name="modelo" value="{{ equipo.modelo if equipo else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Serial</label>
+                    <input type="text" class="form-control" name="serial" value="{{ equipo.serial if equipo else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Condición</label>
+                    <select class="form-select" name="condicion">
+                        {% for valor, texto in condiciones %}
+                        <option value="{{ valor }}" {{ 'selected' if equipo and equipo.condicion == valor else '' }}>{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" name="descripcion" rows="2">{{ equipo.descripcion if equipo else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Actualizar' if equipo else 'Guardar' }}
+                </button>
+                <a href="{{ url_for('admin.ubicacion_ver', id=ubicacion.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

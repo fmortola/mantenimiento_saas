@@ -1,0 +1,58 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Clientes - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0"><i class="bi bi-building"></i> Clientes</h4>
+    <a href="{{ url_for('admin.cliente_nuevo') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nuevo Cliente
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if clientes %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Ubicaciones</th>
+                        <th>Equipos</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>
+                            <strong>{{ cliente.nombre }}</strong>
+                            {% if cliente.rif %}<br><small class="text-muted">{{ cliente.rif }}</small>{% endif %}
+                        </td>
+                        <td>{{ cliente.persona_contacto or '-' }}</td>
+                        <td>{{ cliente.telefono_principal or '-' }}</td>
+                        <td><span class="badge bg-secondary">{{ cliente.ubicaciones.filter_by(activo=True).count() }}</span></td>
+                        <td><span class="badge bg-info">{{ cliente.total_equipos() }}</span></td>
+                        <td>
+                            <a href="{{ url_for('admin.cliente_ver', id=cliente.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+            <p class="text-muted mt-2">No hay clientes registrados</p>
+            <a href="{{ url_for('admin.cliente_nuevo') }}" class="btn btn-primary">Agregar primer cliente</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

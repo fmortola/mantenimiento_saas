@@ -1,0 +1,177 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Orden {{ orden.numero }} - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.ordenes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ orden.numero }}</h5>
+                    <small class="text-muted">{{ orden.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                <span class="badge bg-{{ 'success' if orden.estado == 'completado' else 'primary' if orden.estado == 'en_progreso' else 'warning' if orden.estado == 'asignado' else 'secondary' }} fs-6">
+                    {{ orden.estado.upper() }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <span class="badge bg-info">{{ orden.tipo }}</span>
+                    <span class="badge bg-{{ 'danger' if orden.prioridad == 'urgente' else 'warning' if orden.prioridad == 'alta' else 'secondary' }}">
+                        {{ orden.prioridad }}
+                    </span>
+                </div>
+
+                <h6>Descripción de la solicitud:</h6>
+                <p>{{ orden.descripcion_solicitud }}</p>
+
+                {% if orden.descripcion_trabajo %}
+                <hr>
+                <h6>Trabajo realizado:</h6>
+                <p>{{ orden.descripcion_trabajo }}</p>
+                {% if orden.tiempo_real %}
+                <p><strong>Tiempo empleado:</strong> {{ orden.tiempo_real }} minutos</p>
+                {% endif %}
+                {% endif %}
+
+                <!-- Fotos -->
+                {% if orden.fotos.count() > 0 %}
+                <hr>
+                <h6>Evidencias fotográficas:</h6>
+                <div class="row g-2">
+                    {% for foto in orden.fotos %}
+                    <div class="col-4 col-md-3">
+                        <a href="{{ url_for('static', filename='images/uploads/' + foto.ruta) }}" target="_blank">
+                            <img src="{{ url_for('static', filename='images/uploads/' + foto.ruta) }}" class="img-thumbnail">
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Asignar técnicos -->
+        {% if orden.estado in ['pendiente', 'asignado'] %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Asignar Técnicos</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.orden_asignar', id=orden.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="text-muted small">Selecciona los técnicos que realizarán este trabajo</p>
+                    <div class="row">
+                        {% for tecnico in tecnicos %}
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tecnicos" value="{{ tecnico.id }}" id="tec{{ tecnico.id }}"
+                                    {% if tecnico in orden.tecnicos.all() %}checked{% endif %}>
+                                <label class="form-check-label" for="tec{{ tecnico.id }}">
+                                    {{ tecnico.nombre }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-check"></i> Guardar Asignación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Finalizar -->
+        {% if orden.estado == 'completado' and not orden.fecha_fin %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Finalizar Orden</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.orden_finalizar', id=orden.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Notas del administrador</label>
+                        <textarea class="form-control" name="notas_admin" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> Finalizar y Cerrar
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Información</h6>
+            </div>
+            <div class="card-body">
+                {% if orden.cliente %}
+                <p class="mb-2"><strong>Cliente:</strong><br>{{ orden.cliente.nombre }}</p>
+                {% if orden.ubicacion %}
+                <p class="mb-2"><strong>Ubicación:</strong><br>{{ orden.ubicacion.nombre }}<br>
+                    <small class="text-muted">{{ orden.ubicacion.direccion }}</small>
+                </p>
+                {% endif %}
+                {% else %}
+                <p class="mb-2"><strong>Cliente:</strong><br>{{ orden.cliente_rapido_nombre }}</p>
+                <p class="mb-2"><strong>Teléfono:</strong><br>{{ orden.cliente_rapido_telefono }}</p>
+                {% if orden.cliente_rapido_direccion %}
+                <p class="mb-2"><strong>Dirección:</strong><br>{{ orden.cliente_rapido_direccion }}</p>
+                {% endif %}
+                {% endif %}
+
+                <hr>
+
+                {% if orden.tecnicos.count() > 0 %}
+                <p class="mb-2"><strong>Técnicos:</strong><br>
+                    {% for tecnico in orden.tecnicos %}
+                    <span class="badge bg-primary">{{ tecnico.nombre }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+
+                {% if orden.fecha_programada %}
+                <p class="mb-2"><strong>Programada:</strong><br>{{ orden.fecha_programada.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+
+                {% if orden.fecha_inicio %}
+                <p class="mb-2"><strong>Iniciada:</strong><br>{{ orden.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+
+                {% if orden.fecha_fin %}
+                <p class="mb-2"><strong>Finalizada:</strong><br>{{ orden.fecha_fin.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- PDF -->
+        <div class="card mt-3">
+            <div class="card-body">
+                {% if orden.estado == 'completado' %}
+                <a href="{{ url_for('api.pdf_orden', id=orden.id) }}" class="btn btn-outline-primary w-100" target="_blank">
+                    <i class="bi bi-file-pdf"></i> Descargar PDF
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary w-100" disabled>
+                    <i class="bi bi-file-pdf"></i> PDF (disponible al completar)
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

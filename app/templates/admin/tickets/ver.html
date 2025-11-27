@@ -1,0 +1,140 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Ticket {{ ticket.numero }} - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.tickets') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ ticket.numero }}</h5>
+                    <small class="text-muted">{{ ticket.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</small>
+                </div>
+                <span class="badge bg-{{ 'danger' if ticket.estado == 'abierto' else 'warning' if ticket.estado in ['asignado', 'en_progreso'] else 'success' if ticket.estado == 'resuelto' else 'secondary' }} fs-6">
+                    {{ ticket.estado.upper() }}
+                </span>
+            </div>
+            <div class="card-body">
+                <h5>{{ ticket.asunto }}</h5>
+
+                <div class="mb-3">
+                    <span class="badge bg-{{ 'danger' if ticket.prioridad == 'urgente' else 'warning' if ticket.prioridad == 'alta' else 'info' }}">
+                        Prioridad: {{ ticket.prioridad }}
+                    </span>
+                    <span class="badge bg-secondary">{{ ticket.tipo or 'General' }}</span>
+                </div>
+
+                <hr>
+
+                <h6>Descripción del problema:</h6>
+                <p class="text-muted">{{ ticket.descripcion }}</p>
+
+                {% if ticket.equipo %}
+                <hr>
+                <h6>Equipo relacionado:</h6>
+                <p>
+                    <strong>{{ ticket.equipo.tipo }}</strong> - {{ ticket.equipo.nombre or ticket.equipo.marca }}<br>
+                    <small class="text-muted">{{ ticket.equipo.marca }} {{ ticket.equipo.modelo }}</small>
+                </p>
+                {% endif %}
+
+                {% if ticket.respuesta_admin %}
+                <hr>
+                <h6>Respuesta/Solución:</h6>
+                <p>{{ ticket.respuesta_admin }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Asignar técnicos -->
+        {% if ticket.estado in ['abierto', 'asignado'] %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Asignar Técnicos</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.ticket_asignar', id=ticket.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="text-muted small">Selecciona los técnicos que atenderán este ticket</p>
+                    <div class="row">
+                        {% for tecnico in tecnicos %}
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tecnicos" value="{{ tecnico.id }}" id="tec{{ tecnico.id }}"
+                                    {% if tecnico in ticket.tecnicos.all() %}checked{% endif %}>
+                                <label class="form-check-label" for="tec{{ tecnico.id }}">
+                                    {{ tecnico.nombre }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-check"></i> Guardar Asignación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Cerrar ticket -->
+        {% if ticket.estado == 'resuelto' %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Cerrar Ticket</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.ticket_cerrar', id=ticket.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Notas de cierre (opcional)</label>
+                        <textarea class="form-control" name="respuesta" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> Cerrar Ticket
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Información</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Cliente:</strong><br>{{ ticket.cliente.nombre }}</p>
+                {% if ticket.ubicacion %}
+                <p class="mb-2"><strong>Ubicación:</strong><br>{{ ticket.ubicacion.nombre }}</p>
+                {% endif %}
+                <p class="mb-2"><strong>Creado por:</strong><br>{{ ticket.creado_por.nombre if ticket.creado_por else 'Sistema' }}</p>
+                {% if ticket.tecnicos.count() > 0 %}
+                <p class="mb-2"><strong>Técnicos asignados:</strong><br>
+                    {% for tecnico in ticket.tecnicos %}
+                    <span class="badge bg-primary">{{ tecnico.nombre }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+                {% if ticket.fecha_asignacion %}
+                <p class="mb-2"><strong>Asignado:</strong><br>{{ ticket.fecha_asignacion.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+                {% if ticket.fecha_resolucion %}
+                <p class="mb-2"><strong>Resuelto:</strong><br>{{ ticket.fecha_resolucion.strftime('%d/%m/%Y %H:%M') }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

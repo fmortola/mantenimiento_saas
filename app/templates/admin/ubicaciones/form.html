@@ -1,0 +1,67 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Editar' if ubicacion else 'Nueva' }} Ubicación{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.cliente_ver', id=cliente.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">{{ 'Editar' if ubicacion else 'Nueva' }} Ubicación - {{ cliente.nombre }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre de la Ubicación *</label>
+                    <input type="text" class="form-control" name="nombre"
+                           value="{{ ubicacion.nombre if ubicacion else '' }}" required
+                           placeholder="Ej: Oficina Principal, Sucursal Norte">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Persona de Contacto</label>
+                    <input type="text" class="form-control" name="persona_contacto"
+                           value="{{ ubicacion.persona_contacto if ubicacion else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" class="form-control" name="direccion"
+                           value="{{ ubicacion.direccion if ubicacion else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Ciudad</label>
+                    <input type="text" class="form-control" name="ciudad"
+                           value="{{ ubicacion.ciudad if ubicacion else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Estado</label>
+                    <input type="text" class="form-control" name="estado"
+                           value="{{ ubicacion.estado if ubicacion else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" name="telefono"
+                           value="{{ ubicacion.telefono if ubicacion else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notas</label>
+                    <textarea class="form-control" name="notas" rows="2">{{ ubicacion.notas if ubicacion else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Actualizar' if ubicacion else 'Guardar' }}
+                </button>
+                <a href="{{ url_for('admin.cliente_ver', id=cliente.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

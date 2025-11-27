@@ -1,0 +1,192 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Dashboard - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Dashboard</h4>
+    <a href="{{ url_for('admin.orden_nueva') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nueva Orden
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-building fs-2"></i>
+                <h3 class="mb-0">{{ stats.total_clientes }}</h3>
+                <small>Clientes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-person-badge fs-2"></i>
+                <h3 class="mb-0">{{ stats.total_tecnicos }}</h3>
+                <small>Técnicos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-pc-display fs-2"></i>
+                <h3 class="mb-0">{{ stats.total_equipos }}</h3>
+                <small>Equipos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-warning text-dark h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-ticket fs-2"></i>
+                <h3 class="mb-0">{{ stats.tickets_abiertos }}</h3>
+                <small>Tickets</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-danger text-white h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-clipboard-check fs-2"></i>
+                <h3 class="mb-0">{{ stats.ordenes_pendientes }}</h3>
+                <small>Órdenes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card bg-secondary text-white h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-wrench fs-2"></i>
+                <h3 class="mb-0">{{ stats.mantenimientos_activos }}</h3>
+                <small>Mant. Activos</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Tickets Nuevos -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-ticket text-warning"></i> Tickets Sin Asignar</h6>
+                <a href="{{ url_for('admin.tickets', estado='abierto') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+            </div>
+            <div class="card-body p-0">
+                {% if tickets_nuevos %}
+                <div class="list-group list-group-flush">
+                    {% for ticket in tickets_nuevos %}
+                    <a href="{{ url_for('admin.ticket_ver', id=ticket.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ ticket.numero }}</strong>
+                            <small class="text-muted">{{ ticket.fecha_creacion.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1 text-truncate">{{ ticket.asunto }}</p>
+                        <small class="text-muted">{{ ticket.cliente.nombre }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No hay tickets pendientes</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Órdenes Recientes -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-clipboard-check text-primary"></i> Órdenes Recientes</h6>
+                <a href="{{ url_for('admin.ordenes') }}" class="btn btn-sm btn-outline-primary">Ver todas</a>
+            </div>
+            <div class="card-body p-0">
+                {% if ordenes_recientes %}
+                <div class="list-group list-group-flush">
+                    {% for orden in ordenes_recientes %}
+                    <a href="{{ url_for('admin.orden_ver', id=orden.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ orden.numero }}</strong>
+                            <span class="badge bg-{{ 'success' if orden.estado == 'completado' else 'warning' if orden.estado == 'en_progreso' else 'secondary' }}">
+                                {{ orden.estado }}
+                            </span>
+                        </div>
+                        <p class="mb-1 text-truncate">{{ orden.descripcion_solicitud[:50] }}...</p>
+                        <small class="text-muted">
+                            {% if orden.cliente %}{{ orden.cliente.nombre }}{% else %}{{ orden.cliente_rapido_nombre }}{% endif %}
+                            {% if orden.tecnico %} | <i class="bi bi-person"></i> {{ orden.tecnico.nombre }}{% endif %}
+                        </small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No hay órdenes recientes</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mantenimientos en Progreso -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-wrench text-info"></i> Mantenimientos en Progreso</h6>
+                <a href="{{ url_for('admin.mantenimiento_nuevo') }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus"></i> Nuevo
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if mantenimientos_activos %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Ubicación</th>
+                                <th>Progreso</th>
+                                <th>Técnicos</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mant in mantenimientos_activos %}
+                            <tr>
+                                <td><strong>{{ mant.numero }}</strong></td>
+                                <td>{{ mant.cliente.nombre }}</td>
+                                <td>{{ mant.ubicacion.nombre }}</td>
+                                <td style="min-width: 150px;">
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-success" style="width: {{ mant.progreso_porcentaje() }}%">
+                                            {{ mant.progreso_porcentaje() }}%
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">{{ mant.equipos_con_mantenimiento() }}/{{ mant.equipos_mantenimiento.count() }} equipos</small>
+                                </td>
+                                <td>
+                                    {% for tecnico in mant.tecnicos %}
+                                    <span class="badge bg-secondary">{{ tecnico.nombre.split()[0] }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('admin.mantenimiento_ver', id=mant.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No hay mantenimientos en progreso</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

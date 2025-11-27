@@ -1,0 +1,145 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Editar' if mantenimiento else 'Nuevo' }} Mantenimiento{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.mantenimiento_ver', id=mantenimiento.id) if mantenimiento else url_for('admin.mantenimientos') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">{{ 'Editar Mantenimiento' if mantenimiento else 'Programar Mantenimiento' }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                {% if mantenimiento %}
+                <!-- En modo edición, mostrar cliente y ubicación como solo lectura -->
+                <div class="col-md-6">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" value="{{ mantenimiento.cliente.nombre }}" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ubicaci&oacute;n</label>
+                    <input type="text" class="form-control" value="{{ mantenimiento.ubicacion.nombre }}" readonly>
+                </div>
+                {% else %}
+                <!-- En modo creación, permitir seleccionar cliente y ubicación -->
+                <div class="col-md-6">
+                    <label class="form-label">Cliente *</label>
+                    <select class="form-select" name="cliente_id" id="selectCliente" required>
+                        <option value="">-- Seleccionar Cliente --</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ubicaci&oacute;n *</label>
+                    <select class="form-select" name="ubicacion_id" id="selectUbicacion" required disabled>
+                        <option value="">-- Seleccionar primero el cliente --</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <label class="form-label">T&iacute;tulo *</label>
+                    <input type="text" class="form-control" name="titulo" required
+                           placeholder="Ej: Mantenimiento preventivo trimestral"
+                           value="{{ mantenimiento.titulo if mantenimiento else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Tipo de Mantenimiento *</label>
+                    <select class="form-select" name="tipo" required>
+                        {% for valor, texto in tipos %}
+                        <option value="{{ valor }}" {% if mantenimiento and mantenimiento.tipo == valor %}selected{% endif %}>{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Fecha Programada</label>
+                    <input type="datetime-local" class="form-control" name="fecha_programada"
+                           value="{{ mantenimiento.fecha_programada.strftime('%Y-%m-%dT%H:%M') if mantenimiento and mantenimiento.fecha_programada else '' }}">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Descripci&oacute;n / Instrucciones</label>
+                    <textarea class="form-control" name="descripcion" rows="3"
+                              placeholder="Instrucciones espec&iacute;ficas para los t&eacute;cnicos...">{{ mantenimiento.descripcion if mantenimiento else '' }}</textarea>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">T&eacute;cnicos Asignados *</label>
+                    <p class="text-muted small">Selecciona los t&eacute;cnicos que realizar&aacute;n este mantenimiento</p>
+                    <div class="row">
+                        {% for tecnico in tecnicos %}
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tecnicos"
+                                       value="{{ tecnico.id }}" id="tec{{ tecnico.id }}"
+                                       {% if mantenimiento and tecnico in mantenimiento.tecnicos %}checked{% endif %}>
+                                <label class="form-check-label" for="tec{{ tecnico.id }}">
+                                    {{ tecnico.nombre }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if not mantenimiento %}
+            <div class="alert alert-info mt-4">
+                <i class="bi bi-info-circle"></i> Los equipos registrados en la ubicaci&oacute;n seleccionada se agregar&aacute;n autom&aacute;ticamente al mantenimiento.
+                Si el cliente no tiene equipos registrados, los t&eacute;cnicos podr&aacute;n agregarlos durante el levantamiento de inventario.
+            </div>
+            {% else %}
+            <div class="alert alert-warning mt-4">
+                <i class="bi bi-exclamation-triangle"></i> Al modificar los t&eacute;cnicos asignados, se notificar&aacute; autom&aacute;ticamente a los t&eacute;cnicos agregados o removidos.
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Guardar Cambios' if mantenimiento else 'Programar Mantenimiento' }}
+                </button>
+                <a href="{{ url_for('admin.mantenimiento_ver', id=mantenimiento.id) if mantenimiento else url_for('admin.mantenimientos') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if not mantenimiento %}
+<script>
+document.getElementById('selectCliente').addEventListener('change', function() {
+    const clienteId = this.value;
+    const selectUbicacion = document.getElementById('selectUbicacion');
+
+    if (!clienteId) {
+        selectUbicacion.innerHTML = '<option value="">-- Seleccionar primero el cliente --</option>';
+        selectUbicacion.disabled = true;
+        return;
+    }
+
+    fetch(`/admin/api/clientes/${clienteId}/ubicaciones`)
+        .then(response => response.json())
+        .then(ubicaciones => {
+            selectUbicacion.innerHTML = '<option value="">-- Seleccionar Ubicaci&oacute;n --</option>';
+            ubicaciones.forEach(u => {
+                selectUbicacion.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
+            });
+            selectUbicacion.disabled = false;
+        });
+});
+</script>
+{% endif %}
+{% endblock %}

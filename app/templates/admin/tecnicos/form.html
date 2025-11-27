@@ -1,0 +1,66 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Editar' if tecnico else 'Nuevo' }} Técnico{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.tecnicos') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">{{ 'Editar' if tecnico else 'Nuevo' }} Técnico</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" name="nombre" value="{{ tecnico.nombre if tecnico else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" name="email" value="{{ tecnico.email if tecnico else '' }}" {{ 'readonly' if tecnico else '' }} required>
+                        <small class="text-muted">Este será el usuario para iniciar sesión</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" class="form-control" name="telefono" value="{{ tecnico.telefono if tecnico else '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'Nueva Contraseña' if tecnico else 'Contraseña *' }}</label>
+                        <input type="password" class="form-control" name="password" {{ '' if tecnico else 'required' }} minlength="6">
+                        {% if tecnico %}
+                        <small class="text-muted">Dejar en blanco para mantener la actual</small>
+                        {% endif %}
+                    </div>
+
+                    {% if tecnico %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="activo" id="activo" {{ 'checked' if tecnico.activo else '' }}>
+                            <label class="form-check-label" for="activo">Usuario activo</label>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> {{ 'Actualizar' if tecnico else 'Crear Técnico' }}
+                        </button>
+                        <a href="{{ url_for('admin.tecnicos') }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

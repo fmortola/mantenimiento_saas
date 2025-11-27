@@ -1,0 +1,198 @@
+{% extends "tecnico/base_tecnico.html" %}
+
+{% block title %}Mantenimiento {{ mantenimiento.numero }}{% endblock %}
+
+{% block tecnico_content %}
+<a href="{{ url_for('tecnico.mantenimientos') }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<!-- Info del mantenimiento -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0">{{ mantenimiento.numero }}</h5>
+        <small class="text-muted">{{ mantenimiento.titulo }}</small>
+    </div>
+    <div class="card-body">
+        <p class="mb-1"><strong>{{ mantenimiento.cliente.nombre }}</strong></p>
+        <p class="mb-1 text-muted"><i class="bi bi-geo-alt"></i> {{ mantenimiento.ubicacion.nombre }}</p>
+        {% if mantenimiento.ubicacion.direccion %}
+        <p class="small text-muted">{{ mantenimiento.ubicacion.direccion }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Barra de progreso -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+            <span>Progreso</span>
+            <strong>{{ mantenimiento.progreso_porcentaje() }}%</strong>
+        </div>
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar bg-success" style="width: {{ mantenimiento.progreso_porcentaje() }}%">
+                {{ mantenimiento.equipos_con_mantenimiento() }}/{{ mantenimiento.equipos_mantenimiento.count() }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agregar nuevo equipo -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Agregar Equipo</h6>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" data-bs-target="#formNuevoEquipo">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+    <div class="collapse" id="formNuevoEquipo">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('tecnico.mantenimiento_agregar_equipo', id=mantenimiento.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select class="form-select form-select-sm" name="tipo" required>
+                            {% for valor, texto in tipos_equipo %}
+                            <option value="{{ valor }}">{{ texto }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control form-control-sm" name="nombre" placeholder="Nombre">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control form-control-sm" name="marca" placeholder="Marca">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control form-control-sm" name="modelo" placeholder="Modelo">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control form-control-sm" name="serial" placeholder="Serial">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" class="form-control form-control-sm" name="departamento" placeholder="Departamento">
+                    </div>
+                    <div class="col-12">
+                        <select class="form-select form-select-sm" name="condicion">
+                            {% for valor, texto in condiciones %}
+                            <option value="{{ valor }}">{{ texto }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <input type="hidden" name="foto_data" id="foto-nuevo-equipo">
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="tomarFotoNuevoEquipo()">
+                            <i class="bi bi-camera"></i> Tomar Foto
+                        </button>
+                        <div id="preview-nuevo-equipo" class="text-center"></div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-plus"></i> Agregar Equipo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de equipos -->
+<div class="card mb-5">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-pc-display"></i> Equipos</h6>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for equipo in equipos_ubicacion %}
+        {% set me = equipos_mantenimiento.get(equipo.id) %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>{{ equipo.nombre or equipo.tipo }}</strong>
+                    <br><small class="text-muted">{{ equipo.marca }} {{ equipo.modelo }}</small>
+                    {% if equipo.departamento %}
+                    <br><small class="text-muted"><i class="bi bi-geo-alt"></i> {{ equipo.departamento }}</small>
+                    {% endif %}
+                </div>
+                <div class="text-end">
+                    {% if me %}
+                    <span class="badge bg-{{ 'success' if me.estado == 'completado' else 'primary' if me.estado == 'en_progreso' else 'warning' }}">
+                        {{ me.estado }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary">Pendiente</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Acciones del equipo -->
+            {% if not me or me.estado == 'pendiente' %}
+            <form method="POST" action="{{ url_for('tecnico.mantenimiento_equipo_iniciar', mant_id=mantenimiento.id, equipo_id=equipo.id) }}" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                    <i class="bi bi-play"></i> Iniciar Mantenimiento
+                </button>
+            </form>
+            {% elif me.estado == 'en_progreso' %}
+            <div class="mt-2 p-2 bg-light rounded">
+                <form method="POST" action="{{ url_for('tecnico.mantenimiento_equipo_completar', mant_id=mantenimiento.id, equipo_id=equipo.id) }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-2">
+                        <textarea class="form-control form-control-sm" name="descripcion_trabajo" rows="2" placeholder="Describe el trabajo realizado..." required></textarea>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <select class="form-select form-select-sm" name="condicion_final" required>
+                                <option value="">Condición final</option>
+                                {% for valor, texto in condiciones %}
+                                <option value="{{ valor }}">{{ texto }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm" name="tiempo_minutos" placeholder="Minutos">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <input type="hidden" name="foto_data" id="foto-{{ equipo.id }}">
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-1" onclick="tomarFotoEquipo({{ equipo.id }})">
+                            <i class="bi bi-camera"></i> Tomar Foto
+                        </button>
+                        <div id="preview-{{ equipo.id }}" class="text-center"></div>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                        <i class="bi bi-check"></i> Completar
+                    </button>
+                </form>
+            </div>
+            {% elif me.estado == 'completado' %}
+            <div class="mt-2 small text-muted">
+                <i class="bi bi-check-circle text-success"></i> {{ me.descripcion_trabajo }}
+                {% if me.tiempo_minutos %}<br>Tiempo: {{ me.tiempo_minutos }} min{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Foto para nuevo equipo
+function tomarFotoNuevoEquipo() {
+    openCamera(function(imageData) {
+        document.getElementById('foto-nuevo-equipo').value = imageData;
+        document.getElementById('preview-nuevo-equipo').innerHTML = '<img src="' + imageData + '" class="img-thumbnail" style="max-height: 80px;">';
+    });
+}
+
+// Foto para equipo existente en mantenimiento
+function tomarFotoEquipo(equipoId) {
+    openCamera(function(imageData) {
+        document.getElementById('foto-' + equipoId).value = imageData;
+        document.getElementById('preview-' + equipoId).innerHTML = '<img src="' + imageData + '" class="img-thumbnail" style="max-height: 80px;">';
+    });
+}
+</script>
+{% endblock %}

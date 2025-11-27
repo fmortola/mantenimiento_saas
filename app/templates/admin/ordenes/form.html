@@ -1,0 +1,157 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Nueva Orden de Trabajo{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.ordenes') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Nueva Orden de Trabajo</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="formOrden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Tabs para tipo de cliente -->
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#clienteExistente" type="button">
+                        Cliente Existente
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#clienteNuevo" type="button">
+                        Cliente Nuevo (Llamada)
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Cliente Existente -->
+                <div class="tab-pane fade show active" id="clienteExistente">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cliente</label>
+                            <select class="form-select" name="cliente_id" id="selectCliente">
+                                <option value="">-- Seleccionar Cliente --</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ubicación</label>
+                            <select class="form-select" name="ubicacion_id" id="selectUbicacion" disabled>
+                                <option value="">-- Seleccionar primero el cliente --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cliente Nuevo -->
+                <div class="tab-pane fade" id="clienteNuevo">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nombre del Cliente *</label>
+                            <input type="text" class="form-control" name="cliente_rapido_nombre">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Teléfono *</label>
+                            <input type="text" class="form-control" name="cliente_rapido_telefono">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Dirección</label>
+                            <input type="text" class="form-control" name="cliente_rapido_direccion">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Detalles de la orden -->
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Tipo de Trabajo *</label>
+                    <select class="form-select" name="tipo" required>
+                        {% for valor, texto in tipos %}
+                        <option value="{{ valor }}">{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Prioridad</label>
+                    <select class="form-select" name="prioridad">
+                        {% for valor, texto in prioridades %}
+                        <option value="{{ valor }}" {{ 'selected' if valor == 'normal' else '' }}>{{ texto }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fecha Programada</label>
+                    <input type="datetime-local" class="form-control" name="fecha_programada">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripción de la Solicitud *</label>
+                    <textarea class="form-control" name="descripcion_solicitud" rows="4" required
+                              placeholder="Describe el problema o solicitud del cliente..."></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Asignar Técnicos (opcional)</label>
+                    <p class="text-muted small">Selecciona los técnicos que realizarán este trabajo</p>
+                    <div class="row">
+                        {% for tecnico in tecnicos %}
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tecnicos" value="{{ tecnico.id }}" id="tec{{ tecnico.id }}">
+                                <label class="form-check-label" for="tec{{ tecnico.id }}">
+                                    {{ tecnico.nombre }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Crear Orden
+                </button>
+                <a href="{{ url_for('admin.ordenes') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('selectCliente').addEventListener('change', function() {
+    const clienteId = this.value;
+    const selectUbicacion = document.getElementById('selectUbicacion');
+
+    if (!clienteId) {
+        selectUbicacion.innerHTML = '<option value="">-- Seleccionar primero el cliente --</option>';
+        selectUbicacion.disabled = true;
+        return;
+    }
+
+    fetch(`/admin/api/clientes/${clienteId}/ubicaciones`)
+        .then(response => response.json())
+        .then(ubicaciones => {
+            selectUbicacion.innerHTML = '<option value="">-- Seleccionar Ubicación --</option>';
+            ubicaciones.forEach(u => {
+                selectUbicacion.innerHTML += `<option value="${u.id}">${u.nombre} - ${u.direccion || ''}</option>`;
+            });
+            selectUbicacion.disabled = false;
+        });
+});
+</script>
+{% endblock %}

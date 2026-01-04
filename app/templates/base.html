@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{% block title %}Servicio Técnico{% endblock %}</title>
 
@@ -153,7 +153,6 @@
 
     <script>
         let swRegistration = null;
-        let deferredPrompt = null; // Para Chrome/Edge install prompt
 
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
@@ -167,6 +166,7 @@
         }
 
         // ========== PWA INSTALLATION ==========
+        // Nota: deferredPrompt se declara en app.js
 
         // Detectar si ya está instalado como PWA
         function esPWAInstalada() {
@@ -182,13 +182,6 @@
             if (/android/.test(ua)) return 'android';
             return 'desktop';
         }
-
-        // Capturar evento beforeinstallprompt (Chrome/Edge/Android)
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            mostrarBannerPWA();
-        });
 
         // Mostrar banner PWA
         function mostrarBannerPWA() {
@@ -210,7 +203,7 @@
             if (dispositivo === 'ios') {
                 instrucciones.innerHTML = 'Toca <i class="bi bi-box-arrow-up"></i> <strong>Compartir</strong> y luego <strong>"Añadir a pantalla de inicio"</strong>';
                 btnInstalar.style.display = 'none'; // iOS no tiene API de instalación
-            } else if (dispositivo === 'android' && deferredPrompt) {
+            } else if (dispositivo === 'android' && window.deferredPrompt) {
                 instrucciones.textContent = 'Instala la app para acceso rápido y notificaciones';
                 btnText.textContent = 'Instalar App';
             } else if (dispositivo === 'android') {
@@ -218,7 +211,7 @@
                 btnInstalar.style.display = 'none';
             } else {
                 // Desktop
-                if (deferredPrompt) {
+                if (window.deferredPrompt) {
                     instrucciones.textContent = 'Instala la aplicación en tu computadora';
                     btnText.textContent = 'Instalar';
                 } else {
@@ -232,16 +225,16 @@
 
         // Instalar PWA (Chrome/Edge/Android)
         async function instalarPWA() {
-            if (!deferredPrompt) return;
+            if (!window.deferredPrompt) return;
 
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
+            window.deferredPrompt.prompt();
+            const { outcome } = await window.deferredPrompt.userChoice;
 
             if (outcome === 'accepted') {
                 console.log('PWA instalada');
                 document.getElementById('pwa-install-banner').style.display = 'none';
             }
-            deferredPrompt = null;
+            window.deferredPrompt = null;
         }
 
         // Cerrar banner PWA
@@ -254,14 +247,13 @@
         window.addEventListener('appinstalled', () => {
             console.log('PWA instalada exitosamente');
             document.getElementById('pwa-install-banner').style.display = 'none';
-            deferredPrompt = null;
+            window.deferredPrompt = null;
         });
 
         // Mostrar banner después de un delay en todos los dispositivos
-        // (beforeinstallprompt no siempre se dispara)
         document.addEventListener('DOMContentLoaded', function() {
             if (!esPWAInstalada()) {
-                setTimeout(mostrarBannerPWA, 3000); // Mostrar después de 3 segundos
+                setTimeout(mostrarBannerPWA, 3000);
             }
         });
 

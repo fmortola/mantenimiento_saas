@@ -22,7 +22,7 @@ class Config:
     REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_SECURE = False  # Cambiar a True si usas HTTPS
 
-    # VAPID keys para Push Notifications (generar propias en producción)
-    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY') or 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
-    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY') or 'Wml2jJSLRKGzm8-BrPJzaW4n1zWh6_KxV-a2zLjvPWI'
-    VAPID_CLAIMS = {"sub": "mailto:admin@servicio-tecnico.com"}
+    # VAPID keys para Push Notifications (REQUERIDO - generar con: python gen_vapid.py)
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+    VAPID_CLAIMS = {"sub": os.environ.get('VAPID_EMAIL', 'mailto:admin@example.com')}

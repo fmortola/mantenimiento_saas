@@ -257,9 +257,10 @@
             deferredPrompt = null;
         });
 
-        // Mostrar banner en iOS después de un delay (no tiene beforeinstallprompt)
+        // Mostrar banner después de un delay en todos los dispositivos
+        // (beforeinstallprompt no siempre se dispara)
         document.addEventListener('DOMContentLoaded', function() {
-            if (detectarDispositivo() === 'ios' && !esPWAInstalada()) {
+            if (!esPWAInstalada()) {
                 setTimeout(mostrarBannerPWA, 3000); // Mostrar después de 3 segundos
             }
         });

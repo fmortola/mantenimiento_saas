@@ -132,8 +132,28 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
+    <!-- Banner para instalar PWA -->
+    <div id="pwa-install-banner" class="position-fixed bottom-0 start-0 end-0 m-3 rounded shadow" style="display: none; z-index: 1049; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="p-3 text-white">
+            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" onclick="cerrarBannerPWA()"></button>
+            <div class="d-flex align-items-start">
+                <div class="me-3">
+                    <i class="bi bi-download fs-1"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-bold">Instalar ServTec</h6>
+                    <p class="mb-2 small opacity-90" id="pwa-instructions"></p>
+                    <button type="button" class="btn btn-light btn-sm" id="pwa-install-btn" onclick="instalarPWA()">
+                        <i class="bi bi-plus-circle"></i> <span id="pwa-btn-text">Instalar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let swRegistration = null;
+        let deferredPrompt = null; // Para Chrome/Edge install prompt
 
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
@@ -145,6 +165,104 @@
                 })
                 .catch(err => console.log('Error SW:', err));
         }
+
+        // ========== PWA INSTALLATION ==========
+
+        // Detectar si ya está instalado como PWA
+        function esPWAInstalada() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true ||
+                   document.referrer.includes('android-app://');
+        }
+
+        // Detectar tipo de dispositivo
+        function detectarDispositivo() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+            if (/android/.test(ua)) return 'android';
+            return 'desktop';
+        }
+
+        // Capturar evento beforeinstallprompt (Chrome/Edge/Android)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            mostrarBannerPWA();
+        });
+
+        // Mostrar banner PWA
+        function mostrarBannerPWA() {
+            // No mostrar si ya está instalado
+            if (esPWAInstalada()) return;
+
+            // No mostrar si el usuario lo cerró recientemente (7 días)
+            const cerrado = localStorage.getItem('pwa_banner_cerrado');
+            if (cerrado) {
+                const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                if (parseInt(cerrado) > hace7dias) return;
+            }
+
+            const dispositivo = detectarDispositivo();
+            const instrucciones = document.getElementById('pwa-instructions');
+            const btnInstalar = document.getElementById('pwa-install-btn');
+            const btnText = document.getElementById('pwa-btn-text');
+
+            if (dispositivo === 'ios') {
+                instrucciones.innerHTML = 'Toca <i class="bi bi-box-arrow-up"></i> <strong>Compartir</strong> y luego <strong>"Añadir a pantalla de inicio"</strong>';
+                btnInstalar.style.display = 'none'; // iOS no tiene API de instalación
+            } else if (dispositivo === 'android' && deferredPrompt) {
+                instrucciones.textContent = 'Instala la app para acceso rápido y notificaciones';
+                btnText.textContent = 'Instalar App';
+            } else if (dispositivo === 'android') {
+                instrucciones.innerHTML = 'Toca <i class="bi bi-three-dots-vertical"></i> <strong>Menú</strong> y luego <strong>"Añadir a pantalla de inicio"</strong>';
+                btnInstalar.style.display = 'none';
+            } else {
+                // Desktop
+                if (deferredPrompt) {
+                    instrucciones.textContent = 'Instala la aplicación en tu computadora';
+                    btnText.textContent = 'Instalar';
+                } else {
+                    instrucciones.innerHTML = 'Haz clic en <i class="bi bi-plus-circle"></i> en la barra de direcciones para instalar';
+                    btnInstalar.style.display = 'none';
+                }
+            }
+
+            document.getElementById('pwa-install-banner').style.display = 'block';
+        }
+
+        // Instalar PWA (Chrome/Edge/Android)
+        async function instalarPWA() {
+            if (!deferredPrompt) return;
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                console.log('PWA instalada');
+                document.getElementById('pwa-install-banner').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+
+        // Cerrar banner PWA
+        function cerrarBannerPWA() {
+            document.getElementById('pwa-install-banner').style.display = 'none';
+            localStorage.setItem('pwa_banner_cerrado', Date.now().toString());
+        }
+
+        // Detectar cuando se instala
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA instalada exitosamente');
+            document.getElementById('pwa-install-banner').style.display = 'none';
+            deferredPrompt = null;
+        });
+
+        // Mostrar banner en iOS después de un delay (no tiene beforeinstallprompt)
+        document.addEventListener('DOMContentLoaded', function() {
+            if (detectarDispositivo() === 'ios' && !esPWAInstalada()) {
+                setTimeout(mostrarBannerPWA, 3000); // Mostrar después de 3 segundos
+            }
+        });
 
         // Verificar si ya tiene permiso o mostrar banner
         function verificarPermisoNotificaciones() {

@@ -1,0 +1,70 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Mantenimientos{% endblock %}
+
+{% block cliente_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-calendar-check"></i> Mantenimientos</h4>
+</div>
+
+<!-- Filtros -->
+<div class="mb-3">
+    <div class="btn-group btn-group-sm" role="group">
+        <a href="{{ url_for('cliente.mantenimientos', estado='todos') }}" class="btn btn-{{ 'primary' if estado_filtro == 'todos' else 'outline-secondary' }}">
+            Todos
+        </a>
+        <a href="{{ url_for('cliente.mantenimientos', estado='programado') }}" class="btn btn-{{ 'primary' if estado_filtro == 'programado' else 'outline-secondary' }}">
+            Programados
+        </a>
+        <a href="{{ url_for('cliente.mantenimientos', estado='en_progreso') }}" class="btn btn-{{ 'primary' if estado_filtro == 'en_progreso' else 'outline-secondary' }}">
+            En Progreso
+        </a>
+        <a href="{{ url_for('cliente.mantenimientos', estado='completado') }}" class="btn btn-{{ 'primary' if estado_filtro == 'completado' else 'outline-secondary' }}">
+            Completados
+        </a>
+    </div>
+</div>
+
+{% if mantenimientos %}
+<div class="list-group" id="lista-mantenimientos">
+    {% for mant in mantenimientos %}
+    <a href="{{ url_for('cliente.mantenimiento_ver', id=mant.id) }}" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center mb-1">
+                    <strong class="me-2">{{ mant.numero }}</strong>
+                    {% if mant.estado == 'programado' %}
+                    <span class="badge bg-primary">Programado</span>
+                    {% elif mant.estado == 'en_progreso' %}
+                    <span class="badge bg-info">En Progreso</span>
+                    {% elif mant.estado == 'completado' %}
+                    <span class="badge bg-success">Completado</span>
+                    {% elif mant.estado == 'cancelado' %}
+                    <span class="badge bg-danger">Cancelado</span>
+                    {% endif %}
+                </div>
+                <p class="mb-1">
+                    <i class="bi bi-calendar-event"></i>
+                    {% if mant.fecha_programada %}
+                    {{ mant.fecha_programada.strftime('%d/%m/%Y') }}
+                    {% else %}
+                    Sin fecha
+                    {% endif %}
+                </p>
+                <small class="text-muted">
+                    <i class="bi bi-geo-alt"></i> {{ mant.ubicacion.nombre if mant.ubicacion else 'Sin ubicación' }}
+                    | <i class="bi bi-pc-display"></i> {{ mant.equipos_mantenimiento.count() }} equipo(s)
+                </small>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-calendar-x display-1 text-muted"></i>
+    <p class="text-muted mt-3">No hay mantenimientos programados</p>
+</div>
+{% endif %}
+{% endblock %}

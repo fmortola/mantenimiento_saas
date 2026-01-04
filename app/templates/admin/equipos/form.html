@@ -20,11 +20,20 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Tipo *</label>
-                    <select class="form-select" name="tipo" required>
-                        {% for valor, texto in tipos_equipo %}
-                        <option value="{{ valor }}" {{ 'selected' if equipo and equipo.tipo == valor else '' }}>{{ texto }}</option>
+                    <select class="form-select" name="tipo_equipo_id" required>
+                        <option value="">Seleccionar...</option>
+                        {% for tipo in tipos_equipo %}
+                        <option value="{{ tipo.id }}" {{ 'selected' if equipo and equipo.tipo_equipo_id == tipo.id else '' }}>
+                            {{ tipo.nombre }}
+                        </option>
                         {% endfor %}
                     </select>
+                    {% if tipos_equipo|length == 0 %}
+                    <small class="text-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <a href="{{ url_for('admin.tipos_equipo') }}">Configura los tipos de equipo</a> primero
+                    </small>
+                    {% endif %}
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Nombre/Identificador</label>

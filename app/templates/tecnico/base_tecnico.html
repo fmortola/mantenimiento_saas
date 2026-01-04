@@ -1,28 +1,119 @@
 {% extends "base.html" %}
 
+{% block flash_messages %}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css" rel="stylesheet">
+<style>
+    .introjs-tooltip { max-width: 300px; }
+    .introjs-button { padding: 8px 16px; min-height: 44px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-3">
+    <!-- Alertas Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     {% block tecnico_content %}{% endblock %}
 </div>
 
 {% block bottom_nav %}
-<nav class="bottom-nav">
-    <a href="{{ url_for('tecnico.dashboard') }}" class="{{ 'active' if request.endpoint == 'tecnico.dashboard' }}">
+<nav class="bottom-nav" id="nav-inferior">
+    <a href="{{ url_for('tecnico.dashboard') }}" class="{{ 'active' if request.endpoint == 'tecnico.dashboard' }}" id="nav-inicio">
         <i class="bi bi-house"></i>
         <span>Inicio</span>
     </a>
-    <a href="{{ url_for('tecnico.ordenes') }}" class="{{ 'active' if 'orden' in request.endpoint }}">
+    <a href="{{ url_for('tecnico.ordenes') }}" class="{{ 'active' if 'orden' in request.endpoint }}" id="nav-ordenes">
         <i class="bi bi-clipboard"></i>
         <span>Órdenes</span>
     </a>
-    <a href="{{ url_for('tecnico.mantenimientos') }}" class="{{ 'active' if 'mantenimiento' in request.endpoint }}">
+    <a href="{{ url_for('tecnico.mantenimientos') }}" class="{{ 'active' if 'mantenimiento' in request.endpoint }}" id="nav-mant">
         <i class="bi bi-wrench"></i>
         <span>Mant.</span>
     </a>
-    <a href="{{ url_for('tecnico.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint }}">
+    <a href="{{ url_for('tecnico.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint }}" id="nav-tickets">
         <i class="bi bi-ticket"></i>
         <span>Tickets</span>
     </a>
 </nav>
 {% endblock %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
+<script>
+// Tours por página para Técnico
+function getTourSteps() {
+    const path = window.location.pathname;
+
+    // Tour del Dashboard
+    if (path.includes('/tecnico/dashboard') || path === '/tecnico/' || path === '/tecnico') {
+        return [
+            { title: 'Bienvenido', intro: 'Esta es tu app de técnico. Aquí verás tus órdenes asignadas y mantenimientos.' },
+            { element: '#nav-ordenes', title: 'Órdenes', intro: 'Aquí verás las órdenes de trabajo que te han asignado.', position: 'top' },
+            { element: '#nav-mant', title: 'Mantenimientos', intro: 'Mantenimientos preventivos programados para ti.', position: 'top' },
+            { element: '#nav-tickets', title: 'Tickets', intro: 'Tickets de soporte asignados a ti.', position: 'top' },
+            { title: '¡Listo!', intro: 'Presiona el botón (?) en cualquier momento para ver esta ayuda.' }
+        ];
+    }
+
+    // Tour de Órdenes
+    if (path.includes('/tecnico/ordenes')) {
+        return [
+            { title: 'Tus Órdenes', intro: 'Aquí ves todas las órdenes de trabajo asignadas a ti.' },
+            { title: 'Estados', intro: 'Pendiente: por iniciar. En Progreso: trabajando. Completado: finalizado.' },
+            { title: 'Actualizar Orden', intro: 'Al entrar a una orden puedes: cambiar estado, agregar fotos, registrar actividades y obtener la firma del cliente.' }
+        ];
+    }
+
+    // Tour de Mantenimientos
+    if (path.includes('/tecnico/mantenimiento')) {
+        return [
+            { title: 'Mantenimientos', intro: 'Mantenimientos preventivos o correctivos programados.' },
+            { title: 'Equipos', intro: 'Cada mantenimiento puede incluir varios equipos. Marca cada uno como completado o con problemas.' }
+        ];
+    }
+
+    // Tour genérico
+    return [
+        { title: 'Ayuda', intro: 'Usa la barra inferior para navegar. Presiona (?) para ver la ayuda.' }
+    ];
+}
+
+function iniciarTour() {
+    const steps = getTourSteps().filter(step => {
+        if (!step.element) return true;
+        return document.querySelector(step.element);
+    });
+
+    introJs().setOptions({
+        steps: steps,
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
+        doneLabel: 'Entendido',
+        showProgress: true,
+        showBullets: true,
+        exitOnOverlayClick: true
+    }).start();
+}
+
+// Mostrar tour en primera visita
+document.addEventListener('DOMContentLoaded', function() {
+    const path = window.location.pathname;
+    const tourVisto = localStorage.getItem('tour_tecnico_visto');
+    if (!tourVisto && (path.includes('/tecnico/dashboard') || path === '/tecnico/' || path === '/tecnico')) {
+        setTimeout(iniciarTour, 1000);
+        localStorage.setItem('tour_tecnico_visto', 'true');
+    }
+});
+</script>
 {% endblock %}

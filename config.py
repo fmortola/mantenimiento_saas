@@ -5,11 +5,16 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave-secreta-cambiar-en-produccion'
-    # MariaDB en servidor Linux 10.5.1.115
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://servicio_tecnico:password@10.5.1.115:3306/servicio_tecnico'
+
+    # MariaDB - NUEVA BD para SaaS (NO usar servicio_tecnico que esta en produccion)
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://mantenimiento_saas:password@10.5.1.115:3306/mantenimiento_saas'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'static', 'images', 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
+
+    # Configuracion SaaS
+    SAAS_NAME = os.environ.get('SAAS_NAME') or 'TecniGest SaaS'
+    SAAS_DOMAIN = os.environ.get('SAAS_DOMAIN') or 'tecnigest.com'
 
     # Configuración de cookies para compatibilidad con Safari
     SESSION_COOKIE_SAMESITE = 'Lax'

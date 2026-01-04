@@ -1,0 +1,145 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}{{ 'Editar' if plan else 'Nuevo' }} Plan{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-credit-card"></i>
+        {{ 'Editar Plan' if plan else 'Nuevo Plan' }}
+    </h2>
+    <a href="{{ url_for('superadmin.planes') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Informacion Basica -->
+            <h5 class="mb-3"><i class="bi bi-info-circle"></i> Informacion Basica</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" name="nombre" class="form-control" required
+                           value="{{ plan.nombre if plan else '' }}"
+                           placeholder="Ej: Pro">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Codigo *</label>
+                    <input type="text" name="codigo" class="form-control" required
+                           value="{{ plan.codigo if plan else '' }}"
+                           placeholder="ej: pro" pattern="[a-z0-9-]+"
+                           {{ 'readonly' if plan else '' }}>
+                    <small class="text-muted">Solo letras minusculas, numeros y guiones</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Descripcion</label>
+                    <input type="text" name="descripcion" class="form-control"
+                           value="{{ plan.descripcion if plan else '' }}"
+                           placeholder="Breve descripcion">
+                </div>
+            </div>
+
+            <!-- Limites -->
+            <h5 class="mb-3"><i class="bi bi-speedometer"></i> Limites</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label class="form-label">Max Tecnicos</label>
+                    <input type="number" name="max_tecnicos" class="form-control" min="1"
+                           value="{{ plan.max_tecnicos if plan else 3 }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Max Clientes</label>
+                    <input type="number" name="max_clientes" class="form-control" min="1"
+                           value="{{ plan.max_clientes if plan else 10 }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Max Equipos</label>
+                    <input type="number" name="max_equipos" class="form-control" min="1"
+                           value="{{ plan.max_equipos if plan else 100 }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Max Usuarios/Cliente</label>
+                    <input type="number" name="max_usuarios_cliente" class="form-control" min="1"
+                           value="{{ plan.max_usuarios_cliente if plan else 5 }}">
+                </div>
+            </div>
+
+            <!-- Caracteristicas -->
+            <h5 class="mb-3"><i class="bi bi-stars"></i> Caracteristicas</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="tiene_reportes" class="form-check-input" id="tiene_reportes"
+                               {{ 'checked' if not plan or plan.tiene_reportes }}>
+                        <label class="form-check-label" for="tiene_reportes">Reportes</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="tiene_exportacion_excel" class="form-check-input" id="tiene_exportacion_excel"
+                               {{ 'checked' if plan and plan.tiene_exportacion_excel }}>
+                        <label class="form-check-label" for="tiene_exportacion_excel">Exportacion Excel</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="tiene_notificaciones_push" class="form-check-input" id="tiene_notificaciones_push"
+                               {{ 'checked' if not plan or plan.tiene_notificaciones_push }}>
+                        <label class="form-check-label" for="tiene_notificaciones_push">Notificaciones Push</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="tiene_api" class="form-check-input" id="tiene_api"
+                               {{ 'checked' if plan and plan.tiene_api }}>
+                        <label class="form-check-label" for="tiene_api">Acceso API</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="tiene_branding" class="form-check-input" id="tiene_branding"
+                               {{ 'checked' if plan and plan.tiene_branding }}>
+                        <label class="form-check-label" for="tiene_branding">Branding Personalizado</label>
+                    </div>
+                </div>
+                {% if plan %}
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input type="checkbox" name="activo" class="form-check-input" id="activo"
+                               {{ 'checked' if plan.activo }}>
+                        <label class="form-check-label" for="activo">Plan Activo</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Precios -->
+            <h5 class="mb-3"><i class="bi bi-currency-dollar"></i> Precios</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Precio Mensual ($)</label>
+                    <input type="number" name="precio_mensual" class="form-control" min="0" step="0.01"
+                           value="{{ plan.precio_mensual if plan else 0 }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Precio Anual ($)</label>
+                    <input type="number" name="precio_anual" class="form-control" min="0" step="0.01"
+                           value="{{ plan.precio_anual if plan else 0 }}">
+                </div>
+            </div>
+
+            <hr>
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('superadmin.planes') }}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> {{ 'Guardar Cambios' if plan else 'Crear Plan' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

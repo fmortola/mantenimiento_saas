@@ -1,0 +1,122 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Reportes Globales{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up"></i> Reportes Globales</h2>
+</div>
+
+<!-- Estadisticas por Plan -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Distribucion por Plan</h5>
+    </div>
+    <div class="card-body">
+        {% if planes_stats %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Plan</th>
+                        <th class="text-center">Tenants Total</th>
+                        <th class="text-center">Activos</th>
+                        <th class="text-end">Ingresos Potenciales/mes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in planes_stats %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-primary">{{ item.plan.nombre }}</span>
+                            <small class="text-muted ms-2">${{ item.plan.precio_mensual }}/mes</small>
+                        </td>
+                        <td class="text-center">{{ item.total_tenants }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-success">{{ item.tenants_activos }}</span>
+                        </td>
+                        <td class="text-end">
+                            <strong>${{ "%.2f"|format(item.ingresos_potenciales) }}</strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Total</th>
+                        <th class="text-center">{{ planes_stats|sum(attribute='total_tenants') }}</th>
+                        <th class="text-center">{{ planes_stats|sum(attribute='tenants_activos') }}</th>
+                        <th class="text-end">
+                            <strong>${{ "%.2f"|format(planes_stats|sum(attribute='ingresos_potenciales')) }}</strong>
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No hay datos disponibles</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Top Tenants por Uso -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-trophy"></i> Top Tenants por Uso</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if top_tenants %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Plan</th>
+                        <th class="text-center">Tecnicos</th>
+                        <th class="text-center">Clientes</th>
+                        <th class="text-center">Equipos</th>
+                        <th class="text-center">Ordenes Activas</th>
+                        <th class="text-center">Tickets Abiertos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in top_tenants %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('superadmin.tenant_ver', id=item.tenant.id) }}">
+                                {{ item.tenant.nombre }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ item.tenant.plan.nombre }}</span>
+                        </td>
+                        <td class="text-center">{{ item.stats.tecnicos }}</td>
+                        <td class="text-center">{{ item.stats.clientes }}</td>
+                        <td class="text-center">{{ item.stats.equipos }}</td>
+                        <td class="text-center">
+                            {% if item.stats.ordenes_activas > 0 %}
+                            <span class="badge bg-warning text-dark">{{ item.stats.ordenes_activas }}</span>
+                            {% else %}
+                            0
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if item.stats.tickets_abiertos > 0 %}
+                            <span class="badge bg-info">{{ item.stats.tickets_abiertos }}</span>
+                            {% else %}
+                            0
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            No hay tenants activos
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

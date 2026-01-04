@@ -1,0 +1,61 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Nuevo Usuario - {{ tenant.nombre }}{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-person-plus"></i> Nuevo Usuario</h2>
+        <small class="text-muted">Tenant: {{ tenant.nombre }}</small>
+    </div>
+    <a href="{{ url_for('superadmin.tenant_ver', id=tenant.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" name="nombre" class="form-control" required
+                           placeholder="Nombre completo">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" class="form-control" required
+                           placeholder="email@ejemplo.com">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Telefono</label>
+                    <input type="text" name="telefono" class="form-control"
+                           placeholder="+58 412 1234567">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Rol *</label>
+                    <select name="rol" class="form-select" required>
+                        <option value="admin">Administrador</option>
+                        <option value="tecnico">Tecnico</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Contrasena *</label>
+                    <input type="password" name="password" class="form-control" required
+                           minlength="6" placeholder="Minimo 6 caracteres">
+                </div>
+            </div>
+
+            <hr>
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('superadmin.tenant_ver', id=tenant.id) }}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Crear Usuario
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

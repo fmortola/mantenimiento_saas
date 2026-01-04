@@ -7,6 +7,7 @@ from app.models.cliente import Cliente
 from app.models.ubicacion import Ubicacion
 from app.models.equipo import Equipo, TIPOS_EQUIPO, CONDICIONES_EQUIPO
 from app.models.orden_trabajo import OrdenTrabajo, FotoTrabajo
+from app.models.orden_actividad import OrdenActividad
 from app.models.ticket import Ticket
 from app.models.mantenimiento import Mantenimiento, MantenimientoEquipo
 from app.models.notificacion import Notificacion
@@ -123,6 +124,63 @@ def orden_actualizar(id):
     orden.tiempo_real = request.form.get('tiempo_real', type=int)
     db.session.commit()
     flash('Orden actualizada.', 'success')
+    return redirect(url_for('tecnico.orden_ver', id=id))
+
+@tecnico_bp.route('/ordenes/<int:id>/actividad', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_agregar_actividad(id):
+    """Agrega una actividad/trabajo realizado a la orden"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    descripcion = request.form.get('descripcion')
+    tiempo = request.form.get('tiempo_minutos', type=int)
+
+    if not descripcion or not tiempo:
+        flash('Debes indicar la descripcion y el tiempo.', 'warning')
+        return redirect(url_for('tecnico.orden_ver', id=id))
+
+    actividad = OrdenActividad(
+        orden_id=orden.id,
+        tecnico_id=current_user.id,
+        descripcion=descripcion,
+        tiempo_minutos=tiempo,
+        fecha_hora=datetime.utcnow()
+    )
+    db.session.add(actividad)
+
+    # Actualizar tiempo_real de la orden con el total
+    orden.tiempo_real = orden.tiempo_total_actividades + tiempo
+
+    db.session.commit()
+    flash(f'Actividad registrada: {tiempo} minutos.', 'success')
+    return redirect(url_for('tecnico.orden_ver', id=id))
+
+@tecnico_bp.route('/ordenes/<int:id>/actividad/<int:act_id>/eliminar', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_eliminar_actividad(id, act_id):
+    """Elimina una actividad de la orden"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    actividad = OrdenActividad.query.get_or_404(act_id)
+    if actividad.orden_id != orden.id:
+        flash('Actividad no pertenece a esta orden.', 'danger')
+        return redirect(url_for('tecnico.orden_ver', id=id))
+
+    db.session.delete(actividad)
+
+    # Actualizar tiempo_real de la orden
+    orden.tiempo_real = orden.tiempo_total_actividades
+
+    db.session.commit()
+    flash('Actividad eliminada.', 'success')
     return redirect(url_for('tecnico.orden_ver', id=id))
 
 @tecnico_bp.route('/ordenes/<int:id>/completar', methods=['POST'])
@@ -247,7 +305,13 @@ def mantenimiento_agregar_equipo(id):
     if current_user not in mantenimiento.tecnicos:
         return jsonify({'error': 'Sin acceso'}), 403
 
-    # Crear el equipo
+    # Verificar limite del plan
+    tenant = current_user.tenant
+    if tenant and not tenant.puede_agregar_equipo():
+        flash(f'Se ha alcanzado el limite de equipos del plan ({tenant.plan.max_equipos}).', 'warning')
+        return redirect(url_for('tecnico.mantenimiento_ver', id=id))
+
+    # Crear el equipo con tenant_id del técnico
     equipo = Equipo(
         tipo=request.form.get('tipo'),
         nombre=request.form.get('nombre'),
@@ -258,7 +322,8 @@ def mantenimiento_agregar_equipo(id):
         condicion=request.form.get('condicion'),
         descripcion=request.form.get('descripcion'),
         ubicacion_id=mantenimiento.ubicacion_id,
-        creado_por_id=current_user.id
+        creado_por_id=current_user.id,
+        tenant_id=current_user.tenant_id
     )
 
     # Guardar foto si se proporciona (base64 o archivo)
@@ -459,3 +524,84 @@ def notificacion_leer(id):
     notificacion.fecha_lectura = datetime.utcnow()
     db.session.commit()
     return jsonify({'success': True})
+
+# ==================== FIRMA DIGITAL DEL CLIENTE ====================
+@tecnico_bp.route('/ordenes/<int:id>/firma')
+@login_required
+@tecnico_required
+def orden_firma(id):
+    """Muestra el formulario de firma para que el cliente firme"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    if orden.firma_cliente:
+        flash('Esta orden ya tiene firma del cliente.', 'info')
+        return redirect(url_for('tecnico.orden_ver', id=id))
+
+    return render_template('tecnico/ordenes/firma.html', orden=orden)
+
+@tecnico_bp.route('/ordenes/<int:id>/guardar-firma', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_guardar_firma(id):
+    """Guarda la firma del cliente"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        return jsonify({'error': 'Sin acceso'}), 403
+
+    firma_data = request.form.get('firma_data')
+    firma_nombre = request.form.get('firma_nombre')
+
+    if not firma_data or not firma_nombre:
+        return jsonify({'error': 'Faltan datos de la firma'}), 400
+
+    orden.firma_cliente = firma_data
+    orden.firma_nombre = firma_nombre
+    orden.firma_fecha = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Firma guardada correctamente'})
+
+@tecnico_bp.route('/ordenes/<int:id>/completar-con-firma', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_completar_con_firma(id):
+    """Completa la orden con firma del cliente"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    firma_data = request.form.get('firma_data')
+    firma_nombre = request.form.get('firma_nombre')
+
+    if not firma_data or not firma_nombre:
+        flash('Falta la firma del cliente.', 'danger')
+        return redirect(url_for('tecnico.orden_firma', id=id))
+
+    # Guardar descripcion del trabajo
+    orden.descripcion_trabajo = request.form.get('descripcion_trabajo')
+    orden.tiempo_real = request.form.get('tiempo_real', type=int)
+
+    # Guardar firma
+    orden.firma_cliente = firma_data
+    orden.firma_nombre = firma_nombre
+    orden.firma_fecha = datetime.utcnow()
+
+    # Completar orden
+    orden.estado = 'completado'
+    orden.fecha_fin = datetime.utcnow()
+
+    db.session.commit()
+
+    # Notificar a administradores
+    notificar_admins(
+        'Orden Completada con Firma',
+        f'El tecnico {current_user.nombre} ha completado la orden {orden.numero} con firma del cliente',
+        url_for('admin.orden_ver', id=orden.id)
+    )
+
+    flash('Orden completada exitosamente con firma del cliente.', 'success')
+    return redirect(url_for('tecnico.ordenes'))

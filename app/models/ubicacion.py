@@ -15,6 +15,9 @@ class Ubicacion(db.Model):
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Tenant (multi-tenancy)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
 
     # Relaciones

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.usuario import Usuario
@@ -17,7 +17,9 @@ def service_worker():
 @auth_bp.route('/')
 def index():
     if current_user.is_authenticated:
-        if current_user.es_admin():
+        if current_user.es_superadmin():
+            return redirect(url_for('superadmin.dashboard'))
+        elif current_user.es_admin():
             return redirect(url_for('admin.dashboard'))
         elif current_user.es_tecnico():
             return redirect(url_for('tecnico.dashboard'))
@@ -38,23 +40,42 @@ def login():
 
         if usuario and usuario.check_password(password):
             if not usuario.activo:
-                flash('Tu cuenta está desactivada. Contacta al administrador.', 'danger')
+                flash('Tu cuenta esta desactivada. Contacta al administrador.', 'danger')
                 return redirect(url_for('auth.login'))
 
+            # Verificar tenant activo (excepto superadmin y clientes)
+            if not usuario.es_superadmin():
+                if not usuario.tenant:
+                    flash('Tu cuenta no esta asociada a ninguna organizacion.', 'danger')
+                    return redirect(url_for('auth.login'))
+
+                # Los clientes pueden acceder aunque el tenant este vencido (solo lectura)
+                # Los admins y tecnicos NO pueden acceder si el tenant esta vencido
+                if not usuario.tenant.esta_activo() and not usuario.es_cliente():
+                    flash('La suscripcion de tu organizacion ha vencido. Comunicate con soporte para renovar.', 'danger')
+                    return redirect(url_for('auth.login'))
+
             login_user(usuario, remember=True)
+
+            # Limpiar variables de impersonación si no es superadmin
+            if not usuario.es_superadmin():
+                session.pop('impersonate_tenant_id', None)
+                session.pop('impersonate_tenant_nombre', None)
 
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
 
-            if usuario.es_admin():
+            if usuario.es_superadmin():
+                return redirect(url_for('superadmin.dashboard'))
+            elif usuario.es_admin():
                 return redirect(url_for('admin.dashboard'))
             elif usuario.es_tecnico():
                 return redirect(url_for('tecnico.dashboard'))
             elif usuario.es_cliente():
                 return redirect(url_for('cliente.dashboard'))
         else:
-            flash('Email o contraseña incorrectos.', 'danger')
+            flash('Email o contrasena incorrectos.', 'danger')
 
     return render_template('auth/login.html')
 
@@ -64,3 +85,46 @@ def logout():
     logout_user()
     flash('Has cerrado sesión correctamente.', 'success')
     return redirect(url_for('auth.login'))
+
+@auth_bp.route('/cambiar-password', methods=['GET', 'POST'])
+@login_required
+def cambiar_password():
+    if request.method == 'POST':
+        password_actual = request.form.get('password_actual')
+        password_nuevo = request.form.get('password_nuevo')
+        password_confirmar = request.form.get('password_confirmar')
+
+        # Validar contraseña actual
+        if not current_user.check_password(password_actual):
+            flash('La contraseña actual es incorrecta.', 'danger')
+            return redirect(url_for('auth.cambiar_password'))
+
+        # Validar que las nuevas contraseñas coincidan
+        if password_nuevo != password_confirmar:
+            flash('Las contraseñas nuevas no coinciden.', 'danger')
+            return redirect(url_for('auth.cambiar_password'))
+
+        # Validar longitud mínima
+        if len(password_nuevo) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres.', 'danger')
+            return redirect(url_for('auth.cambiar_password'))
+
+        # Cambiar contraseña
+        current_user.set_password(password_nuevo)
+        db.session.commit()
+
+        flash('Contrasena cambiada exitosamente.', 'success')
+
+        # Redirigir al dashboard correspondiente
+        if current_user.es_superadmin():
+            return redirect(url_for('superadmin.dashboard'))
+        elif current_user.es_admin():
+            return redirect(url_for('admin.dashboard'))
+        elif current_user.es_tecnico():
+            return redirect(url_for('tecnico.dashboard'))
+        elif current_user.es_cliente():
+            return redirect(url_for('cliente.dashboard'))
+
+        return redirect(url_for('auth.index'))
+
+    return render_template('auth/cambiar_password.html')

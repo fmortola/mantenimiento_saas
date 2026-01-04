@@ -30,6 +30,14 @@ class OrdenTrabajo(db.Model):
     cliente_rapido_telefono = db.Column(db.String(20))
     cliente_rapido_direccion = db.Column(db.String(300))
 
+    # Firma del cliente al completar trabajo
+    firma_cliente = db.Column(db.Text)  # Base64 de la firma
+    firma_nombre = db.Column(db.String(100))  # Nombre de quien firma
+    firma_fecha = db.Column(db.DateTime)  # Fecha/hora de la firma
+
+    # Tenant (multi-tenancy)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+
     # Relaciones
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicacion.id'), nullable=True)
@@ -41,6 +49,8 @@ class OrdenTrabajo(db.Model):
     creado_por = db.relationship('Usuario', foreign_keys=[creado_por_id], backref='ordenes_creadas')
     ticket_origen = db.relationship('Ticket', backref='orden_generada', foreign_keys=[ticket_origen_id])
     fotos = db.relationship('FotoTrabajo', backref='orden_trabajo', lazy='dynamic', cascade='all, delete-orphan')
+    actividades = db.relationship('OrdenActividad', backref='orden', lazy='dynamic', cascade='all, delete-orphan', order_by='OrdenActividad.fecha_hora')
+    tenant = db.relationship('Tenant', backref='ordenes')
 
     # Relación muchos a muchos con técnicos
     tecnicos = db.relationship('Usuario', secondary=tecnicos_orden,
@@ -53,6 +63,11 @@ class OrdenTrabajo(db.Model):
         if ultimo:
             return f"OT-{ultimo.id + 1:06d}"
         return "OT-000001"
+
+    @property
+    def tiempo_total_actividades(self):
+        """Suma el tiempo de todas las actividades"""
+        return sum(a.tiempo_minutos for a in self.actividades.all())
 
     def __repr__(self):
         return f'<OrdenTrabajo {self.numero}>'

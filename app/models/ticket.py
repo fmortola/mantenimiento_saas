@@ -22,6 +22,9 @@ class Ticket(db.Model):
     fecha_resolucion = db.Column(db.DateTime)
     respuesta_admin = db.Column(db.Text)
 
+    # Tenant (multi-tenancy)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+
     # Relaciones
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicacion.id'), nullable=True)

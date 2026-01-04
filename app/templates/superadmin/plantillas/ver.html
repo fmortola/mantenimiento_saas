@@ -1,0 +1,214 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Plantilla: {{ plantilla.nombre }}{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="{{ plantilla.icono }}"></i> {{ plantilla.nombre }}
+        {% if plantilla.activo %}
+        <span class="badge bg-success">Activa</span>
+        {% else %}
+        <span class="badge bg-secondary">Inactiva</span>
+        {% endif %}
+    </h2>
+    <div>
+        <a href="{{ url_for('superadmin.plantilla_editar', id=plantilla.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{{ url_for('superadmin.plantillas') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Info de la plantilla -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Información
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Código:</td>
+                        <td><code>{{ plantilla.codigo }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Descripción:</td>
+                        <td>{{ plantilla.descripcion or '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Icono:</td>
+                        <td><i class="{{ plantilla.icono }}"></i> {{ plantilla.icono }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Orden:</td>
+                        <td>{{ plantilla.orden }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Creada:</td>
+                        <td>{{ plantilla.fecha_creacion.strftime('%d/%m/%Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Items:</td>
+                        <td><span class="badge bg-primary">{{ plantilla.items.count() }}</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tipos de equipo de la plantilla -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Tipos de Equipo</span>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoItem">
+                    <i class="bi bi-plus"></i> Agregar Tipo
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if plantilla.items.count() > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">Orden</th>
+                                <th style="width: 60px;">Icono</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th style="width: 100px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in plantilla.items.all() %}
+                            <tr>
+                                <td class="text-center text-muted">{{ item.orden }}</td>
+                                <td class="text-center">
+                                    <i class="{{ item.icono }} fs-5"></i>
+                                </td>
+                                <td><strong>{{ item.nombre }}</strong></td>
+                                <td class="text-muted">{{ item.descripcion or '-' }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="confirmarEliminarItem({{ item.id }}, '{{ item.nombre }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">Esta plantilla no tiene tipos de equipo definidos</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoItem">
+                        <i class="bi bi-plus"></i> Agregar Primer Tipo
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Item -->
+<div class="modal fade" id="modalNuevoItem" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('superadmin.plantilla_item_nuevo', id=plantilla.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Tipo de Equipo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" name="nombre" class="form-control" required
+                               placeholder="Ej: Refrigerador, Aire Acondicionado">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Icono</label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="iconoItemPreview">
+                                <i class="bi-gear fs-5"></i>
+                            </span>
+                            <input type="text" name="icono" id="inputIconoItem" class="form-control"
+                                   value="bi-gear" onchange="actualizarIconoItem(this.value)">
+                        </div>
+                        <div class="mt-2">
+                            {% set iconos = ['bi-gear', 'bi-pc-display', 'bi-laptop', 'bi-printer', 'bi-router',
+                                             'bi-box-seam', 'bi-snow', 'bi-thermometer-sun', 'bi-fire', 'bi-droplet',
+                                             'bi-wind', 'bi-fan', 'bi-heart-pulse', 'bi-hospital', 'bi-lightning'] %}
+                            {% for icono in iconos %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="seleccionarIconoItem('{{ icono }}')" title="{{ icono }}">
+                                <i class="{{ icono }}"></i>
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <input type="text" name="descripcion" class="form-control"
+                               placeholder="Descripción opcional">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Orden</label>
+                        <input type="number" name="orden" class="form-control" min="0"
+                               value="{{ plantilla.items.count() }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Agregar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminación Item -->
+<div class="modal fade" id="modalEliminarItem" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar Tipo de Equipo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Eliminar el tipo de equipo <strong id="nombreItem"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminarItem" method="post" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function actualizarIconoItem(icono) {
+    document.getElementById('iconoItemPreview').innerHTML = '<i class="' + icono + ' fs-5"></i>';
+}
+
+function seleccionarIconoItem(icono) {
+    document.getElementById('inputIconoItem').value = icono;
+    actualizarIconoItem(icono);
+}
+
+function confirmarEliminarItem(id, nombre) {
+    document.getElementById('nombreItem').textContent = nombre;
+    document.getElementById('formEliminarItem').action = '/superadmin/plantillas/item/' + id + '/eliminar';
+    new bootstrap.Modal(document.getElementById('modalEliminarItem')).show();
+}
+</script>
+{% endblock %}

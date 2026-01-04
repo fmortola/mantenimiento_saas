@@ -31,6 +31,9 @@ class Notificacion(db.Model):
     fecha_lectura = db.Column(db.DateTime)
     url = db.Column(db.String(255))  # URL para redirigir al hacer clic
 
+    # Tenant (multi-tenancy) - nullable para notificaciones de superadmin
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
+
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     usuario = db.relationship('Usuario', backref='notificaciones')
 

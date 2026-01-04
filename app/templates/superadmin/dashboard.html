@@ -1,0 +1,184 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Dashboard SuperAdmin{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2"></i> Dashboard SuperAdmin</h2>
+</div>
+
+<!-- Estadisticas Globales -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total_tenants }}</h3>
+                <small>Tenants Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.tenants_activos }}</h3>
+                <small>Tenants Activos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total_usuarios }}</h3>
+                <small>Usuarios</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card bg-warning text-dark h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total_tecnicos }}</h3>
+                <small>Tecnicos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card bg-secondary text-white h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total_clientes }}</h3>
+                <small>Clientes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card bg-dark text-white h-100">
+            <div class="card-body text-center">
+                <h3 class="mb-0">{{ stats.total_equipos }}</h3>
+                <small>Equipos</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Tenants Recientes -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-buildings"></i> Tenants Recientes</h5>
+                <a href="{{ url_for('superadmin.tenants') }}" class="btn btn-sm btn-outline-primary">Ver Todos</a>
+            </div>
+            <div class="card-body p-0">
+                {% if tenants_recientes %}
+                <div class="list-group list-group-flush">
+                    {% for tenant in tenants_recientes %}
+                    <a href="{{ url_for('superadmin.tenant_ver', id=tenant.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ tenant.nombre }}</strong>
+                                <br>
+                                <small class="text-muted">{{ tenant.plan.nombre }} - {{ tenant.email_contacto }}</small>
+                            </div>
+                            <div class="text-end">
+                                {% if tenant.activo %}
+                                <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactivo</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ tenant.fecha_creacion.strftime('%d/%m/%Y') }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-buildings fs-1"></i>
+                    <p>No hay tenants registrados</p>
+                    <a href="{{ url_for('superadmin.tenant_nuevo') }}" class="btn btn-primary">
+                        <i class="bi bi-plus"></i> Crear Primer Tenant
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenants por Vencer -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Proximos a Vencer (30 dias)</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if tenants_por_vencer %}
+                <div class="list-group list-group-flush">
+                    {% for tenant in tenants_por_vencer %}
+                    <a href="{{ url_for('superadmin.tenant_ver', id=tenant.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ tenant.nombre }}</strong>
+                                <br>
+                                <small class="text-muted">{{ tenant.plan.nombre }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-warning text-dark">
+                                    Vence: {{ tenant.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-check-circle fs-1 text-success"></i>
+                    <p>No hay tenants por vencer</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Planes Disponibles -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-credit-card"></i> Planes Disponibles</h5>
+        <a href="{{ url_for('superadmin.planes') }}" class="btn btn-sm btn-outline-primary">Gestionar</a>
+    </div>
+    <div class="card-body">
+        {% if planes %}
+        <div class="row g-3">
+            {% for plan in planes %}
+            <div class="col-md-4">
+                <div class="card h-100 border-primary">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h5 class="mb-0">{{ plan.nombre }}</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <h3 class="text-primary">${{ plan.precio_mensual }}<small>/mes</small></h3>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-person-badge"></i> {{ plan.max_tecnicos }} Tecnicos</li>
+                            <li><i class="bi bi-building"></i> {{ plan.max_clientes }} Clientes</li>
+                            <li><i class="bi bi-pc-display"></i> {{ plan.max_equipos }} Equipos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <p class="text-muted">No hay planes configurados</p>
+            <form action="{{ url_for('superadmin.planes_inicializar') }}" method="post" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-magic"></i> Crear Planes Predefinidos
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -18,6 +18,14 @@ class Mantenimiento(db.Model):
     notas_admin = db.Column(db.Text)
     notas_cierre = db.Column(db.Text)
 
+    # Firma del cliente al completar mantenimiento
+    firma_cliente = db.Column(db.Text)  # Base64 de la firma
+    firma_nombre = db.Column(db.String(100))  # Nombre de quien firma
+    firma_fecha = db.Column(db.DateTime)  # Fecha/hora de la firma
+
+    # Tenant (multi-tenancy)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+
     # Relaciones
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     ubicacion_id = db.Column(db.Integer, db.ForeignKey('ubicacion.id'), nullable=False)
@@ -25,6 +33,7 @@ class Mantenimiento(db.Model):
 
     creado_por = db.relationship('Usuario', foreign_keys=[creado_por_id], backref='mantenimientos_creados')
     equipos_mantenimiento = db.relationship('MantenimientoEquipo', backref='mantenimiento', lazy='dynamic', cascade='all, delete-orphan')
+    tenant = db.relationship('Tenant', backref='mantenimientos')
 
     @staticmethod
     def generar_numero():

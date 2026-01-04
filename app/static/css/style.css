@@ -163,12 +163,21 @@ body {
 }
 
 @media (min-width: 992px) {
-    .bottom-nav {
+    /* Ocultar bottom-nav solo si hay sidebar (admin/tecnico) */
+    body.has-sidebar .bottom-nav {
         display: none !important;
     }
 
-    body {
+    body.has-sidebar {
         padding-bottom: 20px;
+    }
+
+    /* Para clientes (sin sidebar), mantener bottom-nav visible en desktop */
+    body:not(.has-sidebar) .bottom-nav {
+        max-width: 500px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 15px 15px 0 0;
     }
 }
 

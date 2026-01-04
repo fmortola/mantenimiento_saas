@@ -7,6 +7,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from flask import current_app
 import os
 import tempfile
+import base64
+import io
 from datetime import datetime
 
 def generar_pdf_orden(orden):
@@ -20,8 +22,16 @@ def generar_pdf_orden(orden):
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='Center', alignment=TA_CENTER))
     styles.add(ParagraphStyle(name='Bold', fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle(name='TenantName', fontSize=14, fontName='Helvetica-Bold', alignment=TA_CENTER))
 
     elements = []
+
+    # Nombre del Tenant (empresa)
+    tenant_nombre = "Servicio Tecnico"
+    if orden.tenant:
+        tenant_nombre = orden.tenant.nombre
+    elements.append(Paragraph(tenant_nombre.upper(), styles['TenantName']))
+    elements.append(Spacer(1, 10))
 
     # Encabezado
     elements.append(Paragraph("ORDEN DE TRABAJO", styles['Heading1']))
@@ -88,8 +98,46 @@ def generar_pdf_orden(orden):
     elements.append(Paragraph(orden.descripcion_solicitud or 'Sin descripción', styles['Normal']))
     elements.append(Spacer(1, 20))
 
-    # Trabajo realizado
-    if orden.descripcion_trabajo:
+    # Actividades realizadas (nuevo sistema)
+    if orden.actividades.count() > 0:
+        elements.append(Paragraph("ACTIVIDADES REALIZADAS", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+
+        actividad_data = [['Fecha/Hora', 'Descripcion', 'Tiempo', 'Tecnico']]
+        for act in orden.actividades.all():
+            actividad_data.append([
+                act.fecha_hora.strftime('%d/%m %H:%M'),
+                act.descripcion[:60] + '...' if len(act.descripcion) > 60 else act.descripcion,
+                f'{act.tiempo_minutos} min',
+                act.tecnico.nombre if act.tecnico else 'N/A'
+            ])
+
+        # Agregar fila de total
+        actividad_data.append(['', 'TIEMPO TOTAL:', f'{orden.tiempo_total_actividades} min', ''])
+
+        act_table = Table(actividad_data, colWidths=[1.2*inch, 2.8*inch, 0.8*inch, 1.2*inch])
+        act_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (1, -1), (2, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.white),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        elements.append(act_table)
+        elements.append(Spacer(1, 15))
+
+        if orden.fecha_fin:
+            elements.append(Paragraph(f"Fecha de finalizacion: {orden.fecha_fin.strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+
+    # Trabajo realizado (sistema antiguo, por compatibilidad)
+    elif orden.descripcion_trabajo:
         elements.append(Paragraph("TRABAJO REALIZADO", styles['Heading2']))
         elements.append(Spacer(1, 10))
         elements.append(Paragraph(orden.descripcion_trabajo, styles['Normal']))
@@ -99,21 +147,45 @@ def generar_pdf_orden(orden):
             elements.append(Paragraph(f"Tiempo empleado: {orden.tiempo_real} minutos", styles['Normal']))
 
         if orden.fecha_fin:
-            elements.append(Paragraph(f"Fecha de finalización: {orden.fecha_fin.strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+            elements.append(Paragraph(f"Fecha de finalizacion: {orden.fecha_fin.strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
 
     elements.append(Spacer(1, 30))
 
-    # Firmas
-    firma_data = [
-        ['_________________________', '_________________________'],
-        ['Firma del Cliente', 'Firma del Técnico'],
-    ]
-    firma_table = Table(firma_data, colWidths=[3*inch, 3*inch])
-    firma_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('TOPPADDING', (0, 0), (-1, -1), 30),
-    ]))
-    elements.append(firma_table)
+    # Firma del cliente (digital si existe)
+    if orden.firma_cliente:
+        elements.append(Paragraph("FIRMA DEL CLIENTE", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+
+        # Convertir base64 a imagen
+        try:
+            firma_base64 = orden.firma_cliente
+            if ',' in firma_base64:
+                firma_base64 = firma_base64.split(',')[1]
+            firma_bytes = base64.b64decode(firma_base64)
+            firma_buffer = io.BytesIO(firma_bytes)
+
+            firma_img = Image(firma_buffer, width=2.5*inch, height=1*inch)
+            firma_img.hAlign = 'CENTER'
+            elements.append(firma_img)
+        except Exception as e:
+            elements.append(Paragraph("[Firma digital no disponible]", styles['Center']))
+
+        elements.append(Spacer(1, 5))
+        elements.append(Paragraph(f"Firmado por: {orden.firma_nombre or 'N/A'}", styles['Center']))
+        if orden.firma_fecha:
+            elements.append(Paragraph(f"Fecha: {orden.firma_fecha.strftime('%d/%m/%Y %H:%M')}", styles['Center']))
+    else:
+        # Firma tradicional (lineas)
+        firma_data = [
+            ['_________________________', '_________________________'],
+            ['Firma del Cliente', 'Firma del Tecnico'],
+        ]
+        firma_table = Table(firma_data, colWidths=[3*inch, 3*inch])
+        firma_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 30),
+        ]))
+        elements.append(firma_table)
 
     # Pie de página
     elements.append(Spacer(1, 30))
@@ -135,8 +207,16 @@ def generar_pdf_mantenimiento(mantenimiento):
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='Center', alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name='TenantName', fontSize=14, fontName='Helvetica-Bold', alignment=TA_CENTER))
 
     elements = []
+
+    # Nombre del Tenant (empresa)
+    tenant_nombre = "Servicio Tecnico"
+    if mantenimiento.tenant:
+        tenant_nombre = mantenimiento.tenant.nombre
+    elements.append(Paragraph(tenant_nombre.upper(), styles['TenantName']))
+    elements.append(Spacer(1, 10))
 
     # Encabezado
     elements.append(Paragraph("REPORTE DE MANTENIMIENTO", styles['Heading1']))

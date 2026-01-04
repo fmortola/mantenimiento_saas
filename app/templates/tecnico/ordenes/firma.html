@@ -1,0 +1,179 @@
+{% extends "tecnico/base_tecnico.html" %}
+
+{% block title %}Firma - Orden {{ orden.numero }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signature-container {
+        background: #fff;
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        position: relative;
+    }
+    #signature-pad {
+        width: 100%;
+        height: 250px;
+        touch-action: none;
+    }
+    .signature-info {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+        border-radius: 10px;
+    }
+    .btn-clear-signature {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+</style>
+{% endblock %}
+
+{% block tecnico_content %}
+<a href="{{ url_for('tecnico.orden_ver', id=orden.id) }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<div class="text-center mb-4">
+    <h4><i class="bi bi-pen"></i> Firma del Cliente</h4>
+    <p class="text-muted">Orden {{ orden.numero }}</p>
+</div>
+
+<!-- Resumen del trabajo -->
+<div class="card mb-4 signature-info">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-clipboard-check"></i> Resumen del Trabajo</h6>
+        
+        <p class="mb-2">
+            <strong>Cliente:</strong> 
+            {% if orden.cliente %}{{ orden.cliente.nombre }}{% else %}{{ orden.cliente_rapido_nombre }}{% endif %}
+        </p>
+        
+        {% if orden.ubicacion %}
+        <p class="mb-2">
+            <strong>Ubicacion:</strong> {{ orden.ubicacion.nombre }}
+        </p>
+        {% endif %}
+        
+        <p class="mb-2">
+            <strong>Tipo:</strong> {{ orden.tipo }}
+        </p>
+        
+        <p class="mb-2">
+            <strong>Solicitud:</strong> {{ orden.descripcion_solicitud[:100] }}{% if orden.descripcion_solicitud|length > 100 %}...{% endif %}
+        </p>
+        
+        {% if orden.descripcion_trabajo %}
+        <p class="mb-2">
+            <strong>Trabajo realizado:</strong> {{ orden.descripcion_trabajo[:100] }}{% if orden.descripcion_trabajo|length > 100 %}...{% endif %}
+        </p>
+        {% endif %}
+        
+        <p class="mb-0">
+            <strong>Tecnico:</strong> {{ current_user.nombre }}
+        </p>
+    </div>
+</div>
+
+<form id="form-firma" method="POST" action="{{ url_for('tecnico.orden_completar_con_firma', id=orden.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" id="firma_data" name="firma_data">
+    
+    {% if not orden.descripcion_trabajo %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <label class="form-label">Descripcion del trabajo realizado *</label>
+            <textarea class="form-control" name="descripcion_trabajo" rows="3" required>{{ orden.descripcion_trabajo or '' }}</textarea>
+        </div>
+    </div>
+    {% else %}
+    <input type="hidden" name="descripcion_trabajo" value="{{ orden.descripcion_trabajo }}">
+    {% endif %}
+    
+    <input type="hidden" name="tiempo_real" value="{{ orden.tiempo_real or '' }}">
+    
+    <!-- Nombre de quien firma -->
+    <div class="mb-3">
+        <label for="firma_nombre" class="form-label">Nombre de quien firma *</label>
+        <input type="text" class="form-control form-control-lg" id="firma_nombre" name="firma_nombre" 
+               placeholder="Nombre completo" required>
+    </div>
+    
+    <!-- Canvas de firma -->
+    <div class="mb-3">
+        <label class="form-label">Firma del cliente *</label>
+        <div class="signature-container">
+            <button type="button" class="btn btn-sm btn-outline-danger btn-clear-signature" onclick="limpiarFirma()">
+                <i class="bi bi-eraser"></i> Limpiar
+            </button>
+            <canvas id="signature-pad"></canvas>
+        </div>
+        <small class="text-muted">Firme con el dedo o un stylus en el area de arriba</small>
+    </div>
+    
+    <!-- Botones -->
+    <div class="d-grid gap-2 mb-5">
+        <button type="submit" class="btn btn-success btn-lg">
+            <i class="bi bi-check-lg"></i> Confirmar y Completar Orden
+        </button>
+        <a href="{{ url_for('tecnico.orden_ver', id=orden.id) }}" class="btn btn-outline-secondary">
+            Cancelar
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script>
+    let signaturePad;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const canvas = document.getElementById('signature-pad');
+        
+        // Ajustar tamano del canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = container.offsetWidth * ratio;
+            canvas.height = 250 * ratio;
+            canvas.style.width = container.offsetWidth + 'px';
+            canvas.style.height = '250px';
+            canvas.getContext('2d').scale(ratio, ratio);
+            
+            if (signaturePad) {
+                signaturePad.clear();
+            }
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Inicializar signature pad
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 0)',
+            minWidth: 1,
+            maxWidth: 3
+        });
+    });
+    
+    function limpiarFirma() {
+        if (signaturePad) {
+            signaturePad.clear();
+        }
+    }
+    
+    // Validar formulario antes de enviar
+    document.getElementById('form-firma').addEventListener('submit', function(e) {
+        if (signaturePad.isEmpty()) {
+            e.preventDefault();
+            alert('Por favor, solicite al cliente que firme.');
+            return false;
+        }
+        
+        // Guardar firma como base64
+        document.getElementById('firma_data').value = signaturePad.toDataURL('image/png');
+        return true;
+    });
+</script>
+{% endblock %}

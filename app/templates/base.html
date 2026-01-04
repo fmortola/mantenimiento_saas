@@ -25,14 +25,17 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-tools"></i> ServTec
+                {% if session.get('impersonate_tenant_nombre') %}
+                <small class="opacity-75">| {{ session.get('impersonate_tenant_nombre') }}</small>
+                {% elif current_user.tenant %}
+                <small class="opacity-75">| {{ current_user.tenant.nombre }}</small>
+                {% endif %}
             </a>
             <div class="d-flex align-items-center">
-                {% if current_user.es_cliente() %}
-                <!-- Botón de ayuda (solo clientes) -->
+                <!-- Botón de ayuda -->
                 <button class="btn btn-link text-white me-1" type="button" onclick="if(typeof iniciarTour === 'function') iniciarTour();" title="Ayuda">
                     <i class="bi bi-question-circle fs-5"></i>
                 </button>
-                {% endif %}
 
                 <!-- Notificaciones -->
                 <div class="dropdown me-2">
@@ -59,6 +62,7 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><span class="dropdown-item-text small text-muted">{{ current_user.email }}</span></li>
                         <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key"></i> Cambiar Contraseña</a></li>
                         <li><a class="dropdown-item" href="#" onclick="activarNotificaciones(); return false;"><i class="bi bi-bell"></i> Activar Notificaciones</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a></li>
@@ -70,7 +74,8 @@
 
     <!-- Contenido principal -->
     <main class="main-content">
-        <!-- Alertas Flash -->
+        <!-- Alertas Flash (solo si el template hijo no las maneja) -->
+        {% block flash_messages %}
         <div class="container-fluid">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -83,6 +88,7 @@
                 {% endif %}
             {% endwith %}
         </div>
+        {% endblock %}
 
         {% block content %}{% endblock %}
     </main>

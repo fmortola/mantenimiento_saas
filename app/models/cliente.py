@@ -15,6 +15,9 @@ class Cliente(db.Model):
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Tenant (multi-tenancy)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+
     # Relaciones
     ubicaciones = db.relationship('Ubicacion', backref='cliente', lazy='dynamic', cascade='all, delete-orphan')
     ordenes_trabajo = db.relationship('OrdenTrabajo', backref='cliente', lazy='dynamic')

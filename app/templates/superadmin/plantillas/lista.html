@@ -1,0 +1,112 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Plantillas de Tipos de Equipo{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-collection"></i> Plantillas de Tipos de Equipo</h2>
+    <a href="{{ url_for('superadmin.plantilla_nueva') }}" class="btn btn-primary">
+        <i class="bi bi-plus"></i> Nueva Plantilla
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Las plantillas definen los tipos de equipo disponibles para cada industria.
+    Cuando un administrador de tenant cambia su plantilla, se cargan estos tipos de equipo automáticamente.
+</div>
+
+{% if plantillas %}
+<div class="row">
+    {% for plantilla in plantillas %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 {{ 'border-success' if plantilla.activo else 'border-secondary opacity-75' }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="{{ plantilla.icono }} fs-4 me-2"></i>
+                    <strong>{{ plantilla.nombre }}</strong>
+                </span>
+                {% if plantilla.activo %}
+                <span class="badge bg-success">Activo</span>
+                {% else %}
+                <span class="badge bg-secondary">Inactivo</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">{{ plantilla.descripcion or 'Sin descripción' }}</p>
+                <p class="mb-2">
+                    <span class="badge bg-info">{{ plantilla.items.count() }} tipos de equipo</span>
+                    <span class="badge bg-light text-dark">Código: {{ plantilla.codigo }}</span>
+                </p>
+                <div class="d-flex flex-wrap gap-1">
+                    {% for item in plantilla.items.limit(5).all() %}
+                    <span class="badge bg-light text-dark border" title="{{ item.nombre }}">
+                        <i class="{{ item.icono }}"></i> {{ item.nombre[:15] }}{% if item.nombre|length > 15 %}...{% endif %}
+                    </span>
+                    {% endfor %}
+                    {% if plantilla.items.count() > 5 %}
+                    <span class="badge bg-light text-dark border">+{{ plantilla.items.count() - 5 }} más</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="btn-group w-100">
+                    <a href="{{ url_for('superadmin.plantilla_ver', id=plantilla.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i> Ver
+                    </a>
+                    <a href="{{ url_for('superadmin.plantilla_editar', id=plantilla.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="confirmarEliminar({{ plantilla.id }}, '{{ plantilla.nombre }}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-collection fs-1 text-muted"></i>
+        <p class="text-muted mt-2">No hay plantillas configuradas</p>
+        <a href="{{ url_for('superadmin.plantilla_nueva') }}" class="btn btn-primary">
+            <i class="bi bi-plus"></i> Crear Primera Plantilla
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="modalEliminar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar la plantilla <strong id="nombrePlantilla"></strong>?</p>
+                <p class="text-danger"><i class="bi bi-exclamation-triangle"></i> Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminar" method="post" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarEliminar(id, nombre) {
+    document.getElementById('nombrePlantilla').textContent = nombre;
+    document.getElementById('formEliminar').action = '/superadmin/plantillas/' + id + '/eliminar';
+    new bootstrap.Modal(document.getElementById('modalEliminar')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}{{ 'Editar' if plantilla else 'Nueva' }} Plantilla{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-collection"></i>
+        {{ 'Editar' if plantilla else 'Nueva' }} Plantilla
+    </h2>
+    <a href="{{ url_for('superadmin.plantillas') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nombre de la Plantilla *</label>
+                    <input type="text" name="nombre" class="form-control" required
+                           value="{{ plantilla.nombre if plantilla else '' }}"
+                           placeholder="Ej: Línea Blanca, HVAC, Equipo Médico">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Código Único *</label>
+                    <input type="text" name="codigo" class="form-control" required
+                           value="{{ plantilla.codigo if plantilla else '' }}"
+                           placeholder="Ej: linea_blanca, hvac, equipo_medico"
+                           pattern="[a-z0-9_]+" title="Solo letras minúsculas, números y guión bajo">
+                    <small class="text-muted">Solo letras minúsculas, números y guión bajo</small>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <textarea name="descripcion" class="form-control" rows="2"
+                          placeholder="Descripción breve de la plantilla">{{ plantilla.descripcion if plantilla else '' }}</textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Icono</label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="iconoPreview">
+                            <i class="{{ plantilla.icono if plantilla else 'bi-grid' }} fs-5"></i>
+                        </span>
+                        <input type="text" name="icono" id="inputIcono" class="form-control"
+                               value="{{ plantilla.icono if plantilla else 'bi-grid' }}"
+                               onchange="actualizarIcono(this.value)">
+                    </div>
+                    <small class="text-muted">
+                        <a href="https://icons.getbootstrap.com/" target="_blank">Ver iconos disponibles</a>
+                    </small>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Orden</label>
+                    <input type="number" name="orden" class="form-control" min="0"
+                           value="{{ plantilla.orden if plantilla else 0 }}">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Estado</label>
+                    <div class="form-check form-switch mt-2">
+                        <input type="checkbox" name="activo" class="form-check-input" id="checkActivo"
+                               {{ 'checked' if not plantilla or plantilla.activo }}>
+                        <label class="form-check-label" for="checkActivo">Activo</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Iconos populares -->
+            <div class="mb-4">
+                <label class="form-label">Iconos Sugeridos</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% set iconos = ['bi-pc-display', 'bi-laptop', 'bi-box-seam', 'bi-snow', 'bi-thermometer-sun',
+                                     'bi-heart-pulse', 'bi-cup-hot', 'bi-arrow-up-square', 'bi-gear', 'bi-tools',
+                                     'bi-printer', 'bi-router', 'bi-hospital', 'bi-lightning', 'bi-fan'] %}
+                    {% for icono in iconos %}
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="seleccionarIcono('{{ icono }}')" title="{{ icono }}">
+                        <i class="{{ icono }}"></i>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Guardar Cambios' if plantilla else 'Crear Plantilla' }}
+                </button>
+                <a href="{{ url_for('superadmin.plantillas') }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if plantilla %}
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle"></i>
+    Para agregar o editar los tipos de equipo de esta plantilla,
+    <a href="{{ url_for('superadmin.plantilla_ver', id=plantilla.id) }}">ve a la vista detallada</a>.
+</div>
+{% endif %}
+
+<script>
+function actualizarIcono(icono) {
+    document.getElementById('iconoPreview').innerHTML = '<i class="' + icono + ' fs-5"></i>';
+}
+
+function seleccionarIcono(icono) {
+    document.getElementById('inputIcono').value = icono;
+    actualizarIcono(icono);
+}
+</script>
+{% endblock %}

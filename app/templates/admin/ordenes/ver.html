@@ -32,7 +32,32 @@
                 <h6>Descripción de la solicitud:</h6>
                 <p>{{ orden.descripcion_solicitud }}</p>
 
-                {% if orden.descripcion_trabajo %}
+                {% if orden.actividades.count() > 0 %}
+                <hr>
+                <h6><i class="bi bi-list-check"></i> Actividades Realizadas
+                    <span class="badge bg-primary">{{ orden.tiempo_total_actividades }} min</span>
+                </h6>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Descripcion</th>
+                            <th>Tiempo</th>
+                            <th>Tecnico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for actividad in orden.actividades.all() %}
+                        <tr>
+                            <td class="text-muted small">{{ actividad.fecha_hora.strftime('%d/%m %H:%M') }}</td>
+                            <td>{{ actividad.descripcion }}</td>
+                            <td><span class="badge bg-secondary">{{ actividad.tiempo_minutos }} min</span></td>
+                            <td class="small">{{ actividad.tecnico.nombre }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% elif orden.descripcion_trabajo %}
                 <hr>
                 <h6>Trabajo realizado:</h6>
                 <p>{{ orden.descripcion_trabajo }}</p>

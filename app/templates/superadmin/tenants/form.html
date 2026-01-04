@@ -1,0 +1,106 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}{{ 'Editar' if tenant else 'Nuevo' }} Tenant{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-buildings"></i>
+        {{ 'Editar Tenant' if tenant else 'Nuevo Tenant' }}
+    </h2>
+    <a href="{{ url_for('superadmin.tenants') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Informacion del Tenant -->
+            <h5 class="mb-3"><i class="bi bi-info-circle"></i> Informacion del Tenant</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Nombre de la Empresa *</label>
+                    <input type="text" name="nombre" class="form-control" required
+                           value="{{ tenant.nombre if tenant else '' }}"
+                           placeholder="Ej: Empresa ABC C.A.">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Plan *</label>
+                    <select name="plan_id" class="form-select" required>
+                        <option value="">Seleccionar plan...</option>
+                        {% for plan in planes %}
+                        <option value="{{ plan.id }}"
+                                {{ 'selected' if tenant and tenant.plan_id == plan.id }}>
+                            {{ plan.nombre }} - ${{ plan.precio_mensual }}/mes
+                            ({{ plan.max_tecnicos }} tecnicos, {{ plan.max_clientes }} clientes)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email de Contacto *</label>
+                    <input type="email" name="email_contacto" class="form-control" required
+                           value="{{ tenant.email_contacto if tenant else '' }}"
+                           placeholder="contacto@empresa.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Telefono</label>
+                    <input type="text" name="telefono" class="form-control"
+                           value="{{ tenant.telefono if tenant else '' }}"
+                           placeholder="+58 412 1234567">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha de Vencimiento</label>
+                    <input type="date" name="fecha_vencimiento" class="form-control"
+                           value="{{ tenant.fecha_vencimiento.strftime('%Y-%m-%d') if tenant and tenant.fecha_vencimiento else '' }}">
+                    <small class="text-muted">Dejar vacio para sin limite</small>
+                </div>
+                {% if tenant %}
+                <div class="col-md-6">
+                    <label class="form-label">Estado</label>
+                    <div class="form-check form-switch mt-2">
+                        <input type="checkbox" name="activo" class="form-check-input" id="activo"
+                               {{ 'checked' if tenant.activo }}>
+                        <label class="form-check-label" for="activo">Tenant Activo</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Usuario Admin (solo para nuevo) -->
+            {% if not tenant %}
+            <hr>
+            <h5 class="mb-3"><i class="bi bi-person-badge"></i> Usuario Administrador</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Nombre del Admin</label>
+                    <input type="text" name="admin_nombre" class="form-control"
+                           value="Administrador" placeholder="Nombre completo">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Email del Admin *</label>
+                    <input type="email" name="admin_email" class="form-control" required
+                           placeholder="admin@empresa.com">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Contrasena *</label>
+                    <input type="password" name="admin_password" class="form-control" required
+                           minlength="6" placeholder="Minimo 6 caracteres">
+                </div>
+            </div>
+            {% endif %}
+
+            <hr>
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{{ url_for('superadmin.tenants') }}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> {{ 'Guardar Cambios' if tenant else 'Crear Tenant' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

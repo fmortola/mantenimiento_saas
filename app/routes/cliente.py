@@ -121,6 +121,11 @@ def tickets():
 @login_required
 @cliente_required
 def ticket_nuevo():
+    # Verificar que el tenant este activo para crear tickets
+    if not current_user.tenant.esta_activo():
+        flash('El sistema esta en mantenimiento. Intenta mas tarde o comunicate por telefono.', 'warning')
+        return redirect(url_for('cliente.tickets'))
+
     cliente = current_user.cliente
 
     if request.method == 'POST':
@@ -136,7 +141,8 @@ def ticket_nuevo():
             cliente_id=cliente.id,
             ubicacion_id=ubicacion_id if ubicacion_id else None,
             equipo_id=equipo_id if equipo_id else None,
-            creado_por_id=current_user.id
+            creado_por_id=current_user.id,
+            tenant_id=current_user.tenant_id
         )
 
         db.session.add(ticket)
@@ -167,6 +173,82 @@ def ticket_ver(id):
         return redirect(url_for('cliente.tickets'))
 
     return render_template('cliente/tickets/ver.html', ticket=ticket)
+
+# ==================== ÓRDENES DE TRABAJO ====================
+@cliente_bp.route('/ordenes')
+@login_required
+@cliente_required
+def ordenes():
+    # Verificar si el plan permite ver órdenes
+    plan = current_user.tenant.plan
+    if not plan.cliente_ve_ordenes:
+        flash('Tu plan actual no incluye acceso a órdenes de trabajo. Contacta a tu proveedor para actualizar.', 'warning')
+        return redirect(url_for('cliente.dashboard'))
+
+    cliente = current_user.cliente
+    estado = request.args.get('estado', 'todos')
+
+    query = cliente.ordenes_trabajo.order_by(OrdenTrabajo.fecha_creacion.desc())
+    if estado != 'todos':
+        query = query.filter_by(estado=estado)
+
+    ordenes = query.all()
+    return render_template('cliente/ordenes/lista.html', ordenes=ordenes, estado_filtro=estado)
+
+@cliente_bp.route('/ordenes/<int:id>')
+@login_required
+@cliente_required
+def orden_ver(id):
+    # Verificar si el plan permite ver órdenes
+    plan = current_user.tenant.plan
+    if not plan.cliente_ve_ordenes:
+        flash('Tu plan actual no incluye acceso a órdenes de trabajo.', 'warning')
+        return redirect(url_for('cliente.dashboard'))
+
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if orden.cliente_id != current_user.cliente_id:
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('cliente.ordenes'))
+
+    return render_template('cliente/ordenes/ver.html', orden=orden)
+
+# ==================== MANTENIMIENTOS ====================
+@cliente_bp.route('/mantenimientos')
+@login_required
+@cliente_required
+def mantenimientos():
+    # Verificar si el plan permite ver mantenimientos
+    plan = current_user.tenant.plan
+    if not plan.cliente_ve_mantenimientos:
+        flash('Tu plan actual no incluye acceso al calendario de mantenimientos. Contacta a tu proveedor para actualizar.', 'warning')
+        return redirect(url_for('cliente.dashboard'))
+
+    cliente = current_user.cliente
+    estado = request.args.get('estado', 'todos')
+
+    query = cliente.mantenimientos.order_by(Mantenimiento.fecha_programada.desc())
+    if estado != 'todos':
+        query = query.filter_by(estado=estado)
+
+    mantenimientos = query.all()
+    return render_template('cliente/mantenimientos/lista.html', mantenimientos=mantenimientos, estado_filtro=estado)
+
+@cliente_bp.route('/mantenimientos/<int:id>')
+@login_required
+@cliente_required
+def mantenimiento_ver(id):
+    # Verificar si el plan permite ver mantenimientos
+    plan = current_user.tenant.plan
+    if not plan.cliente_ve_mantenimientos:
+        flash('Tu plan actual no incluye acceso a mantenimientos.', 'warning')
+        return redirect(url_for('cliente.dashboard'))
+
+    mantenimiento = Mantenimiento.query.get_or_404(id)
+    if mantenimiento.cliente_id != current_user.cliente_id:
+        flash('No tienes acceso a este mantenimiento.', 'danger')
+        return redirect(url_for('cliente.mantenimientos'))
+
+    return render_template('cliente/mantenimientos/ver.html', mantenimiento=mantenimiento)
 
 # ==================== HISTORIAL ====================
 @cliente_bp.route('/historial')

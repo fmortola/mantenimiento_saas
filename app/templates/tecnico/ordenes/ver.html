@@ -93,31 +93,90 @@
     </div>
 </div>
 
-<!-- Completar trabajo -->
+<!-- Actividades Realizadas -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-list-check"></i> Actividades Realizadas</h6>
+        <span class="badge bg-primary">Total: {{ orden.tiempo_total_actividades }} min</span>
+    </div>
+    <div class="card-body p-0">
+        {% if orden.actividades.count() > 0 %}
+        <ul class="list-group list-group-flush">
+            {% for actividad in orden.actividades.all() %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="ms-2 me-auto">
+                    <div class="small text-muted">{{ actividad.fecha_hora.strftime('%H:%M') }}</div>
+                    <div>{{ actividad.descripcion }}</div>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-secondary rounded-pill">{{ actividad.tiempo_minutos }} min</span>
+                    <form method="POST" action="{{ url_for('tecnico.orden_eliminar_actividad', id=orden.id, act_id=actividad.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta actividad?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-link btn-sm text-danger p-0 ms-1">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center text-muted py-3">
+            <i class="bi bi-inbox"></i> No hay actividades registradas
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Agregar Actividad -->
 <div class="card mb-3">
     <div class="card-header">
-        <h6 class="mb-0">Registrar Trabajo</h6>
+        <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Agregar Actividad</h6>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ url_for('tecnico.orden_completar', id=orden.id) }}">
+        <form method="POST" action="{{ url_for('tecnico.orden_agregar_actividad', id=orden.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-3">
-                <label class="form-label">Descripción del trabajo realizado *</label>
-                <textarea class="form-control" name="descripcion_trabajo" rows="4" required>{{ orden.descripcion_trabajo or '' }}</textarea>
+                <label class="form-label">¿Que hiciste?</label>
+                <input type="text" class="form-control" name="descripcion" placeholder="Ej: Cambie cable de red" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Tiempo empleado (minutos)</label>
-                <input type="number" class="form-control" name="tiempo_real" value="{{ orden.tiempo_real or '' }}">
+                <label class="form-label">Tiempo (minutos)</label>
+                <input type="number" class="form-control" name="tiempo_minutos" min="1" placeholder="Ej: 15" required>
             </div>
-            <div class="d-grid gap-2">
-                <button type="submit" name="guardar" class="btn btn-outline-primary">
-                    <i class="bi bi-save"></i> Guardar
-                </button>
-                <button type="submit" class="btn btn-success">
-                    <i class="bi bi-check-lg"></i> Completar Trabajo
-                </button>
-            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-plus-lg"></i> Agregar Actividad
+            </button>
         </form>
+    </div>
+</div>
+
+<!-- Completar Orden -->
+<div class="card mb-3">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0"><i class="bi bi-check-circle"></i> Finalizar Orden</h6>
+    </div>
+    <div class="card-body">
+        <div class="d-grid gap-2">
+            <a href="{{ url_for('tecnico.orden_firma', id=orden.id) }}" class="btn btn-success btn-lg">
+                <i class="bi bi-pen"></i> Obtener Firma y Completar
+            </a>
+            <small class="text-muted text-center">El cliente firmara en su dispositivo para confirmar el trabajo</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Mostrar firma si existe -->
+{% if orden.firma_cliente %}
+<div class="card mb-3">
+    <div class="card-header bg-success text-white">
+        <h6 class="mb-0"><i class="bi bi-pen"></i> Firma del Cliente</h6>
+    </div>
+    <div class="card-body text-center">
+        <img src="{{ orden.firma_cliente }}" alt="Firma" class="img-fluid border rounded mb-2" style="max-height: 150px;">
+        <p class="mb-1"><strong>Firmado por:</strong> {{ orden.firma_nombre }}</p>
+        <p class="mb-0 small text-muted">{{ orden.firma_fecha.strftime('%d/%m/%Y %H:%M') if orden.firma_fecha else '' }}</p>
     </div>
 </div>
 {% endif %}

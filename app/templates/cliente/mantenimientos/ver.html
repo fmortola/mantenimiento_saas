@@ -1,0 +1,133 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Mantenimiento {{ mantenimiento.numero }}{% endblock %}
+
+{% block cliente_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('cliente.mantenimientos') }}" class="text-decoration-none text-muted">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <h4 class="mt-2 mb-0">{{ mantenimiento.numero }}</h4>
+    </div>
+    {% if mantenimiento.estado == 'programado' %}
+    <span class="badge bg-primary fs-6">Programado</span>
+    {% elif mantenimiento.estado == 'en_progreso' %}
+    <span class="badge bg-info fs-6">En Progreso</span>
+    {% elif mantenimiento.estado == 'completado' %}
+    <span class="badge bg-success fs-6">Completado</span>
+    {% elif mantenimiento.estado == 'cancelado' %}
+    <span class="badge bg-danger fs-6">Cancelado</span>
+    {% endif %}
+</div>
+
+<!-- Info General -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-subtitle text-muted mb-3">Información General</h6>
+
+        <div class="row">
+            <div class="col-6 mb-3">
+                <small class="text-muted d-block">Tipo</small>
+                <strong>{{ mantenimiento.tipo|capitalize if mantenimiento.tipo else 'Preventivo' }}</strong>
+            </div>
+            <div class="col-6 mb-3">
+                <small class="text-muted d-block">Fecha Programada</small>
+                <strong>
+                    {% if mantenimiento.fecha_programada %}
+                    {{ mantenimiento.fecha_programada.strftime('%d/%m/%Y') }}
+                    {% else %}
+                    Por definir
+                    {% endif %}
+                </strong>
+            </div>
+            {% if mantenimiento.fecha_inicio %}
+            <div class="col-6 mb-3">
+                <small class="text-muted d-block">Fecha Inicio</small>
+                <strong>{{ mantenimiento.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}</strong>
+            </div>
+            {% endif %}
+            {% if mantenimiento.fecha_fin %}
+            <div class="col-6 mb-3">
+                <small class="text-muted d-block">Fecha Fin</small>
+                <strong>{{ mantenimiento.fecha_fin.strftime('%d/%m/%Y %H:%M') }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if mantenimiento.descripcion %}
+        <div class="mt-2">
+            <small class="text-muted d-block">Descripción</small>
+            <p class="mb-0">{{ mantenimiento.descripcion }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ubicación -->
+{% if mantenimiento.ubicacion %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-subtitle text-muted mb-3"><i class="bi bi-geo-alt"></i> Ubicación</h6>
+        <p class="mb-1"><strong>{{ mantenimiento.ubicacion.nombre }}</strong></p>
+        <small class="text-muted">{{ mantenimiento.ubicacion.direccion }}</small>
+    </div>
+</div>
+{% endif %}
+
+<!-- Técnicos asignados -->
+{% if mantenimiento.tecnicos %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-subtitle text-muted mb-3"><i class="bi bi-person-badge"></i> Técnicos Asignados</h6>
+        {% for tecnico in mantenimiento.tecnicos %}
+        <span class="badge bg-light text-dark me-1 mb-1">
+            <i class="bi bi-person"></i> {{ tecnico.nombre }}
+        </span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Equipos incluidos -->
+{% if mantenimiento.equipos_mantenimiento.count() > 0 %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-subtitle text-muted mb-3"><i class="bi bi-pc-display"></i> Equipos Incluidos</h6>
+        <ul class="list-unstyled mb-0">
+            {% for me in mantenimiento.equipos_mantenimiento.all() %}
+            <li class="mb-2 pb-2 border-bottom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ me.equipo.nombre or me.equipo.tipo_nombre }}</strong>
+                        <br>
+                        <small class="text-muted">{{ me.equipo.marca }} {{ me.equipo.modelo }}</small>
+                    </div>
+                    {% if me.estado == 'pendiente' %}
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% elif me.estado == 'completado' %}
+                    <span class="badge bg-success">Completado</span>
+                    {% elif me.estado == 'con_problemas' %}
+                    <span class="badge bg-danger">Con Problemas</span>
+                    {% endif %}
+                </div>
+                {% if me.observaciones %}
+                <small class="text-muted mt-1 d-block">{{ me.observaciones }}</small>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<!-- Observaciones finales (si completado) -->
+{% if mantenimiento.estado == 'completado' and mantenimiento.observaciones_finales %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-subtitle text-muted mb-3"><i class="bi bi-check-circle"></i> Observaciones Finales</h6>
+        <p class="mb-0">{{ mantenimiento.observaciones_finales }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

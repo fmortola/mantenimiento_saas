@@ -1,0 +1,98 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Tipos de Equipo - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-tags"></i> Tipos de Equipo</h4>
+    <a href="{{ url_for('admin.tipo_equipo_nuevo') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Nuevo Tipo
+    </a>
+</div>
+
+<!-- Plantillas disponibles -->
+{% if plantillas|length > 0 %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted me-2">Cargar plantilla:</span>
+            {% for plantilla in plantillas %}
+            <form method="POST" action="{{ url_for('admin.tipos_equipo_cambiar_plantilla') }}" class="d-inline" onsubmit="return confirm('Esto eliminara los tipos actuales y creara los de {{ plantilla.nombre }}. ¿Continuar?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="plantilla_id" value="{{ plantilla.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ plantilla.descripcion or plantilla.nombre }}">
+                    <i class="{{ plantilla.icono }}"></i> {{ plantilla.nombre }}
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+        <small class="text-muted mt-2 d-block">
+            <i class="bi bi-info-circle"></i> Selecciona una plantilla para cargar tipos de equipo predefinidos.
+        </small>
+    </div>
+</div>
+{% endif %}
+
+{% if tipos|length == 0 %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-tags display-1 text-muted"></i>
+        <h5 class="mt-3">No hay tipos de equipo</h5>
+        <p class="text-muted">Usa una plantilla de arriba o crea tipos personalizados</p>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th width="50">Icono</th>
+                    <th>Nombre</th>
+                    <th>Descripcion</th>
+                    <th width="80">Equipos</th>
+                    <th width="80">Estado</th>
+                    <th width="100">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo in tipos %}
+                <tr>
+                    <td class="text-center">
+                        <i class="{{ tipo.icono }} fs-4 text-primary"></i>
+                    </td>
+                    <td>
+                        <strong>{{ tipo.nombre }}</strong>
+                    </td>
+                    <td class="text-muted small">{{ tipo.descripcion or '-' }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">{{ tipo.equipos.count() }}</span>
+                    </td>
+                    <td>
+                        {% if tipo.activo %}
+                        <span class="badge bg-success">Activo</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.tipo_equipo_editar', id=tipo.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if tipo.equipos.count() == 0 %}
+                        <form method="POST" action="{{ url_for('admin.tipo_equipo_eliminar', id=tipo.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este tipo?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

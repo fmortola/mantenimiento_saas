@@ -1,0 +1,7 @@
+mysql -u root -p
+  DROP DATABASE servicio_tecnico;
+  CREATE DATABASE servicio_tecnico CHARACTER SET utf8mb4 COLLATE
+  utf8mb4_unicode_ci;
+  GRANT ALL PRIVILEGES ON servicio_tecnico.* TO 'servicio_tecnico'@'%';
+  FLUSH PRIVILEGES;
+  exit;

@@ -1,0 +1,65 @@
+{% extends "cliente/base_cliente.html" %}
+
+{% block title %}Órdenes de Trabajo{% endblock %}
+
+{% block cliente_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-clipboard-check"></i> Órdenes de Trabajo</h4>
+</div>
+
+<!-- Filtros -->
+<div class="mb-3">
+    <div class="btn-group btn-group-sm" role="group">
+        <a href="{{ url_for('cliente.ordenes', estado='todos') }}" class="btn btn-{{ 'primary' if estado_filtro == 'todos' else 'outline-secondary' }}">
+            Todas
+        </a>
+        <a href="{{ url_for('cliente.ordenes', estado='pendiente') }}" class="btn btn-{{ 'primary' if estado_filtro == 'pendiente' else 'outline-secondary' }}">
+            Pendientes
+        </a>
+        <a href="{{ url_for('cliente.ordenes', estado='en_progreso') }}" class="btn btn-{{ 'primary' if estado_filtro == 'en_progreso' else 'outline-secondary' }}">
+            En Progreso
+        </a>
+        <a href="{{ url_for('cliente.ordenes', estado='completado') }}" class="btn btn-{{ 'primary' if estado_filtro == 'completado' else 'outline-secondary' }}">
+            Completadas
+        </a>
+    </div>
+</div>
+
+{% if ordenes %}
+<div class="list-group" id="lista-ordenes">
+    {% for orden in ordenes %}
+    <a href="{{ url_for('cliente.orden_ver', id=orden.id) }}" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center mb-1">
+                    <strong class="me-2">{{ orden.numero }}</strong>
+                    {% if orden.estado == 'pendiente' %}
+                    <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% elif orden.estado == 'en_progreso' %}
+                    <span class="badge bg-info">En Progreso</span>
+                    {% elif orden.estado == 'completado' %}
+                    <span class="badge bg-success">Completado</span>
+                    {% elif orden.estado == 'cancelado' %}
+                    <span class="badge bg-danger">Cancelado</span>
+                    {% endif %}
+                </div>
+                <p class="mb-1 text-truncate" style="max-width: 280px;">{{ orden.descripcion or 'Sin descripción' }}</p>
+                <small class="text-muted">
+                    <i class="bi bi-calendar"></i> {{ orden.fecha_creacion.strftime('%d/%m/%Y') }}
+                    {% if orden.equipo %}
+                    | <i class="bi bi-pc-display"></i> {{ orden.equipo.nombre or orden.equipo.tipo_nombre }}
+                    {% endif %}
+                </small>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-clipboard-x display-1 text-muted"></i>
+    <p class="text-muted mt-3">No hay órdenes de trabajo</p>
+</div>
+{% endif %}
+{% endblock %}

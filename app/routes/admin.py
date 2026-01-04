@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
@@ -6,21 +6,56 @@ from app.models.usuario import Usuario
 from app.models.cliente import Cliente
 from app.models.ubicacion import Ubicacion
 from app.models.equipo import Equipo, TIPOS_EQUIPO, CONDICIONES_EQUIPO
+from app.models.tipo_equipo import TipoEquipo
 from app.models.orden_trabajo import OrdenTrabajo, TIPOS_ORDEN, PRIORIDADES, ESTADOS_ORDEN
 from app.models.ticket import Ticket, ESTADOS_TICKET
 from app.models.mantenimiento import Mantenimiento, MantenimientoEquipo, TIPOS_MANTENIMIENTO
 from app.models.notificacion import Notificacion
 from app.services.notificaciones import enviar_notificacion_push, notificar_cliente, notificar_admins
+from app.utils.tenant_utils import tenant_required, get_current_tenant_id
+from app.utils.query_helpers import (
+    get_clientes_query, get_tecnicos_query, get_ordenes_query,
+    get_tickets_query, get_mantenimientos_query, get_equipos_query, get_ubicaciones_query
+)
 from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
 
+
+def get_tenant_id():
+    """Obtiene el tenant_id actual (del usuario o de impersonacion)"""
+    if current_user.es_superadmin():
+        return session.get('impersonate_tenant_id')
+    return current_user.tenant_id
+
+
+def get_current_tenant():
+    """Obtiene el objeto Tenant actual"""
+    from app.models.tenant import Tenant
+    if current_user.es_superadmin():
+        tenant_id = session.get('impersonate_tenant_id')
+        return Tenant.query.get(tenant_id) if tenant_id else None
+    return current_user.tenant
+
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.es_admin():
+        if not current_user.is_authenticated:
+            flash('Acceso denegado. Debes iniciar sesion.', 'danger')
+            return redirect(url_for('auth.login'))
+
+        # Permitir superadmin en modo impersonacion
+        if current_user.es_superadmin():
+            if 'impersonate_tenant_id' in session:
+                return f(*args, **kwargs)
+            flash('Debes seleccionar un tenant para ver esta seccion.', 'warning')
+            return redirect(url_for('superadmin.tenants'))
+
+        if not current_user.es_admin():
             flash('Acceso denegado. Se requieren permisos de administrador.', 'danger')
             return redirect(url_for('auth.login'))
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -29,24 +64,24 @@ def admin_required(f):
 @login_required
 @admin_required
 def dashboard():
-    # Estadísticas generales
+    # Estadisticas generales - filtradas por tenant
     stats = {
-        'total_clientes': Cliente.query.filter_by(activo=True).count(),
-        'total_tecnicos': Usuario.query.filter_by(rol='tecnico', activo=True).count(),
-        'total_equipos': Equipo.query.filter_by(activo=True).count(),
-        'tickets_abiertos': Ticket.query.filter(Ticket.estado.in_(['abierto', 'asignado'])).count(),
-        'ordenes_pendientes': OrdenTrabajo.query.filter(OrdenTrabajo.estado.in_(['pendiente', 'asignado', 'en_progreso'])).count(),
-        'mantenimientos_activos': Mantenimiento.query.filter(Mantenimiento.estado.in_(['programado', 'en_progreso'])).count()
+        'total_clientes': get_clientes_query().filter_by(activo=True).count(),
+        'total_tecnicos': get_tecnicos_query().filter_by(activo=True).count(),
+        'total_equipos': get_equipos_query().filter_by(activo=True).count(),
+        'tickets_abiertos': get_tickets_query().filter(Ticket.estado.in_(['abierto', 'asignado'])).count(),
+        'ordenes_pendientes': get_ordenes_query().filter(OrdenTrabajo.estado.in_(['pendiente', 'asignado', 'en_progreso'])).count(),
+        'mantenimientos_activos': get_mantenimientos_query().filter(Mantenimiento.estado.in_(['programado', 'en_progreso'])).count()
     }
 
     # Tickets recientes sin asignar
-    tickets_nuevos = Ticket.query.filter_by(estado='abierto').order_by(Ticket.fecha_creacion.desc()).limit(5).all()
+    tickets_nuevos = get_tickets_query().filter_by(estado='abierto').order_by(Ticket.fecha_creacion.desc()).limit(5).all()
 
-    # Órdenes recientes
-    ordenes_recientes = OrdenTrabajo.query.order_by(OrdenTrabajo.fecha_creacion.desc()).limit(5).all()
+    # Ordenes recientes
+    ordenes_recientes = get_ordenes_query().order_by(OrdenTrabajo.fecha_creacion.desc()).limit(5).all()
 
     # Mantenimientos en progreso
-    mantenimientos_activos = Mantenimiento.query.filter_by(estado='en_progreso').all()
+    mantenimientos_activos = get_mantenimientos_query().filter_by(estado='en_progreso').all()
 
     return render_template('admin/dashboard.html',
                            stats=stats,
@@ -59,14 +94,25 @@ def dashboard():
 @login_required
 @admin_required
 def clientes():
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
     return render_template('admin/clientes/lista.html', clientes=clientes)
 
 @admin_bp.route('/clientes/nuevo', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def cliente_nuevo():
+    # Verificar limite del plan
+    tenant = get_current_tenant()
+    if tenant and not tenant.puede_agregar_cliente():
+        flash(f'Has alcanzado el limite de clientes de tu plan ({tenant.plan.max_clientes}). Actualiza tu plan para agregar mas.', 'warning')
+        return redirect(url_for('admin.clientes'))
+
     if request.method == 'POST':
+        # Verificar limite nuevamente antes de guardar
+        if tenant and not tenant.puede_agregar_cliente():
+            flash(f'Has alcanzado el limite de clientes de tu plan.', 'warning')
+            return redirect(url_for('admin.clientes'))
+
         cliente = Cliente(
             nombre=request.form.get('nombre'),
             rif=request.form.get('rif'),
@@ -74,7 +120,8 @@ def cliente_nuevo():
             telefono_principal=request.form.get('telefono_principal'),
             telefono_secundario=request.form.get('telefono_secundario'),
             persona_contacto=request.form.get('persona_contacto'),
-            notas=request.form.get('notas')
+            notas=request.form.get('notas'),
+            tenant_id=get_tenant_id()
         )
         db.session.add(cliente)
         db.session.commit()
@@ -87,14 +134,14 @@ def cliente_nuevo():
 @login_required
 @admin_required
 def cliente_ver(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_clientes_query().filter_by(id=id).first_or_404()
     return render_template('admin/clientes/ver.html', cliente=cliente)
 
 @admin_bp.route('/clientes/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def cliente_editar(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_clientes_query().filter_by(id=id).first_or_404()
 
     if request.method == 'POST':
         cliente.nombre = request.form.get('nombre')
@@ -114,7 +161,7 @@ def cliente_editar(id):
 @login_required
 @admin_required
 def cliente_eliminar(id):
-    cliente = Cliente.query.get_or_404(id)
+    cliente = get_clientes_query().filter_by(id=id).first_or_404()
     cliente.activo = False
     db.session.commit()
     flash('Cliente eliminado.', 'success')
@@ -125,7 +172,7 @@ def cliente_eliminar(id):
 @login_required
 @admin_required
 def ubicacion_nueva(cliente_id):
-    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente = get_clientes_query().filter_by(id=cliente_id).first_or_404()
 
     if request.method == 'POST':
         ubicacion = Ubicacion(
@@ -136,11 +183,12 @@ def ubicacion_nueva(cliente_id):
             telefono=request.form.get('telefono'),
             persona_contacto=request.form.get('persona_contacto'),
             notas=request.form.get('notas'),
-            cliente_id=cliente.id
+            cliente_id=cliente.id,
+            tenant_id=get_tenant_id()
         )
         db.session.add(ubicacion)
         db.session.commit()
-        flash('Ubicación creada exitosamente.', 'success')
+        flash('Ubicacion creada exitosamente.', 'success')
         return redirect(url_for('admin.cliente_ver', id=cliente.id))
 
     return render_template('admin/ubicaciones/form.html', cliente=cliente, ubicacion=None)
@@ -149,7 +197,7 @@ def ubicacion_nueva(cliente_id):
 @login_required
 @admin_required
 def ubicacion_editar(id):
-    ubicacion = Ubicacion.query.get_or_404(id)
+    ubicacion = get_ubicaciones_query().filter_by(id=id).first_or_404()
 
     if request.method == 'POST':
         ubicacion.nombre = request.form.get('nombre')
@@ -169,7 +217,7 @@ def ubicacion_editar(id):
 @login_required
 @admin_required
 def ubicacion_ver(id):
-    ubicacion = Ubicacion.query.get_or_404(id)
+    ubicacion = get_ubicaciones_query().filter_by(id=id).first_or_404()
     equipos = ubicacion.equipos.filter_by(activo=True).all()
     return render_template('admin/ubicaciones/ver.html', ubicacion=ubicacion, equipos=equipos, tipos_equipo=TIPOS_EQUIPO, condiciones=CONDICIONES_EQUIPO)
 
@@ -184,15 +232,15 @@ def equipos():
     equipos = []
     ubicaciones = []
 
-    # Solo mostrar equipos si hay ubicación seleccionada
+    # Solo mostrar equipos si hay ubicacion seleccionada
     if ubicacion_id:
-        equipos = Equipo.query.filter_by(ubicacion_id=ubicacion_id, activo=True).order_by(Equipo.tipo, Equipo.nombre).all()
+        equipos = get_equipos_query().filter_by(ubicacion_id=ubicacion_id, activo=True).order_by(Equipo.tipo, Equipo.nombre).all()
 
     # Cargar ubicaciones si hay cliente seleccionado
     if cliente_id:
-        ubicaciones = Ubicacion.query.filter_by(cliente_id=cliente_id, activo=True).order_by(Ubicacion.nombre).all()
+        ubicaciones = get_ubicaciones_query().filter_by(cliente_id=cliente_id, activo=True).order_by(Ubicacion.nombre).all()
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
 
     return render_template('admin/equipos/lista.html',
                            equipos=equipos,
@@ -205,11 +253,22 @@ def equipos():
 @login_required
 @admin_required
 def equipo_nuevo(ubicacion_id):
-    ubicacion = Ubicacion.query.get_or_404(ubicacion_id)
+    ubicacion = get_ubicaciones_query().filter_by(id=ubicacion_id).first_or_404()
+
+    # Verificar limite del plan
+    tenant = get_current_tenant()
+    if tenant and not tenant.puede_agregar_equipo():
+        flash(f'Has alcanzado el limite de equipos de tu plan ({tenant.plan.max_equipos}). Actualiza tu plan para agregar mas.', 'warning')
+        return redirect(url_for('admin.ubicacion_ver', id=ubicacion_id))
 
     if request.method == 'POST':
+        # Verificar limite nuevamente antes de guardar
+        if tenant and not tenant.puede_agregar_equipo():
+            flash(f'Has alcanzado el limite de equipos de tu plan.', 'warning')
+            return redirect(url_for('admin.ubicacion_ver', id=ubicacion_id))
+
         equipo = Equipo(
-            tipo=request.form.get('tipo'),
+            tipo_equipo_id=request.form.get('tipo_equipo_id', type=int),
             nombre=request.form.get('nombre'),
             marca=request.form.get('marca'),
             modelo=request.form.get('modelo'),
@@ -218,24 +277,26 @@ def equipo_nuevo(ubicacion_id):
             condicion=request.form.get('condicion'),
             descripcion=request.form.get('descripcion'),
             ubicacion_id=ubicacion.id,
-            creado_por_id=current_user.id
+            creado_por_id=current_user.id,
+            tenant_id=get_tenant_id()
         )
         db.session.add(equipo)
         db.session.commit()
         flash('Equipo registrado exitosamente.', 'success')
         return redirect(url_for('admin.ubicacion_ver', id=ubicacion.id))
 
+    tipos = TipoEquipo.query.filter_by(tenant_id=get_tenant_id(), activo=True).order_by(TipoEquipo.orden).all()
     return render_template('admin/equipos/form.html', ubicacion=ubicacion, equipo=None,
-                           tipos_equipo=TIPOS_EQUIPO, condiciones=CONDICIONES_EQUIPO)
+                           tipos_equipo=tipos, condiciones=CONDICIONES_EQUIPO)
 
 @admin_bp.route('/equipos/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def equipo_editar(id):
-    equipo = Equipo.query.get_or_404(id)
+    equipo = get_equipos_query().filter_by(id=id).first_or_404()
 
     if request.method == 'POST':
-        equipo.tipo = request.form.get('tipo')
+        equipo.tipo_equipo_id = request.form.get('tipo_equipo_id', type=int)
         equipo.nombre = request.form.get('nombre')
         equipo.marca = request.form.get('marca')
         equipo.modelo = request.form.get('modelo')
@@ -247,22 +308,163 @@ def equipo_editar(id):
         flash('Equipo actualizado.', 'success')
         return redirect(url_for('admin.ubicacion_ver', id=equipo.ubicacion_id))
 
+    tipos = TipoEquipo.query.filter_by(tenant_id=get_tenant_id(), activo=True).order_by(TipoEquipo.orden).all()
     return render_template('admin/equipos/form.html', ubicacion=equipo.ubicacion, equipo=equipo,
-                           tipos_equipo=TIPOS_EQUIPO, condiciones=CONDICIONES_EQUIPO)
+                           tipos_equipo=tipos, condiciones=CONDICIONES_EQUIPO)
+
+# ==================== TIPOS DE EQUIPO ====================
+@admin_bp.route('/tipos-equipo')
+@login_required
+@admin_required
+def tipos_equipo():
+    from app.models.plantilla_tipo_equipo import PlantillaTipoEquipo
+    tipos = TipoEquipo.query.filter_by(tenant_id=get_tenant_id()).order_by(TipoEquipo.orden, TipoEquipo.nombre).all()
+    plantillas = PlantillaTipoEquipo.query.filter_by(activo=True).order_by(PlantillaTipoEquipo.orden).all()
+    return render_template('admin/tipos_equipo/lista.html', tipos=tipos, plantillas=plantillas)
+
+@admin_bp.route('/tipos-equipo/nuevo', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def tipo_equipo_nuevo():
+    if request.method == 'POST':
+        # Obtener el siguiente orden
+        max_orden = db.session.query(db.func.max(TipoEquipo.orden)).filter_by(tenant_id=get_tenant_id()).scalar() or 0
+
+        tipo = TipoEquipo(
+            nombre=request.form.get('nombre'),
+            icono=request.form.get('icono', 'bi-gear'),
+            descripcion=request.form.get('descripcion'),
+            orden=max_orden + 1,
+            tenant_id=get_tenant_id()
+        )
+        db.session.add(tipo)
+        db.session.commit()
+        flash('Tipo de equipo creado.', 'success')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    return render_template('admin/tipos_equipo/form.html', tipo=None)
+
+@admin_bp.route('/tipos-equipo/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def tipo_equipo_editar(id):
+    tipo = TipoEquipo.query.filter_by(id=id, tenant_id=get_tenant_id()).first_or_404()
+
+    if request.method == 'POST':
+        tipo.nombre = request.form.get('nombre')
+        tipo.icono = request.form.get('icono', 'bi-gear')
+        tipo.descripcion = request.form.get('descripcion')
+        tipo.activo = 'activo' in request.form
+        db.session.commit()
+        flash('Tipo de equipo actualizado.', 'success')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    return render_template('admin/tipos_equipo/form.html', tipo=tipo)
+
+@admin_bp.route('/tipos-equipo/<int:id>/eliminar', methods=['POST'])
+@login_required
+@admin_required
+def tipo_equipo_eliminar(id):
+    tipo = TipoEquipo.query.filter_by(id=id, tenant_id=get_tenant_id()).first_or_404()
+
+    # Verificar si hay equipos usando este tipo
+    if tipo.equipos.count() > 0:
+        flash(f'No se puede eliminar. Hay {tipo.equipos.count()} equipo(s) usando este tipo.', 'warning')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    db.session.delete(tipo)
+    db.session.commit()
+    flash('Tipo de equipo eliminado.', 'success')
+    return redirect(url_for('admin.tipos_equipo'))
+
+@admin_bp.route('/tipos-equipo/crear-defaults', methods=['POST'])
+@login_required
+@admin_required
+def tipos_equipo_crear_defaults():
+    """Crea tipos de equipo predefinidos"""
+    plantilla = request.form.get('plantilla', 'default')
+
+    # Verificar si ya hay tipos
+    existentes = TipoEquipo.query.filter_by(tenant_id=get_tenant_id()).count()
+    if existentes > 0:
+        flash('Ya tienes tipos de equipo creados. Eliminalos primero si deseas usar una plantilla.', 'warning')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    if plantilla == 'linea_blanca':
+        TipoEquipo.crear_tipos_linea_blanca(get_tenant_id())
+        flash('Tipos de equipo para Linea Blanca creados.', 'success')
+    elif plantilla == 'hvac':
+        TipoEquipo.crear_tipos_hvac(get_tenant_id())
+        flash('Tipos de equipo para HVAC/Climatizacion creados.', 'success')
+    else:
+        TipoEquipo.crear_tipos_default(get_tenant_id())
+        flash('Tipos de equipo predeterminados creados.', 'success')
+
+    return redirect(url_for('admin.tipos_equipo'))
+
+@admin_bp.route('/tipos-equipo/cambiar-plantilla', methods=['POST'])
+@login_required
+@admin_required
+def tipos_equipo_cambiar_plantilla():
+    """Elimina tipos existentes (sin equipos) y crea nuevos desde plantilla de BD"""
+    from app.models.plantilla_tipo_equipo import PlantillaTipoEquipo
+
+    plantilla_id = request.form.get('plantilla_id')
+    tenant_id = get_tenant_id()
+
+    if not plantilla_id:
+        flash('Debe seleccionar una plantilla.', 'warning')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    # Buscar la plantilla
+    plantilla = PlantillaTipoEquipo.query.filter_by(id=plantilla_id, activo=True).first()
+    if not plantilla:
+        flash('Plantilla no encontrada o inactiva.', 'danger')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    # Verificar si hay tipos con equipos asignados
+    tipos_con_equipos = TipoEquipo.query.filter_by(tenant_id=tenant_id).filter(
+        TipoEquipo.equipos.any()
+    ).count()
+
+    if tipos_con_equipos > 0:
+        flash(f'No se puede cambiar la plantilla. Hay {tipos_con_equipos} tipo(s) con equipos asignados.', 'warning')
+        return redirect(url_for('admin.tipos_equipo'))
+
+    # Eliminar tipos existentes
+    TipoEquipo.query.filter_by(tenant_id=tenant_id).delete()
+    db.session.commit()
+
+    # Aplicar la plantilla
+    plantilla.aplicar_a_tenant(tenant_id)
+    flash(f'Plantilla "{plantilla.nombre}" aplicada correctamente.', 'success')
+
+    return redirect(url_for('admin.tipos_equipo'))
 
 # ==================== TÉCNICOS ====================
 @admin_bp.route('/tecnicos')
 @login_required
 @admin_required
 def tecnicos():
-    tecnicos = Usuario.query.filter_by(rol='tecnico').order_by(Usuario.nombre).all()
+    tecnicos = get_tecnicos_query().order_by(Usuario.nombre).all()
     return render_template('admin/tecnicos/lista.html', tecnicos=tecnicos)
 
 @admin_bp.route('/tecnicos/nuevo', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def tecnico_nuevo():
+    # Verificar limite del plan
+    tenant = get_current_tenant()
+    if tenant and not tenant.puede_agregar_tecnico():
+        flash(f'Has alcanzado el limite de tecnicos de tu plan ({tenant.plan.max_tecnicos}). Actualiza tu plan para agregar mas.', 'warning')
+        return redirect(url_for('admin.tecnicos'))
+
     if request.method == 'POST':
+        # Verificar limite nuevamente antes de guardar
+        if tenant and not tenant.puede_agregar_tecnico():
+            flash(f'Has alcanzado el limite de tecnicos de tu plan.', 'warning')
+            return redirect(url_for('admin.tecnicos'))
+
         # Verificar que el email no exista
         if Usuario.query.filter_by(email=request.form.get('email')).first():
             flash('Ya existe un usuario con ese email.', 'danger')
@@ -272,12 +474,13 @@ def tecnico_nuevo():
             nombre=request.form.get('nombre'),
             email=request.form.get('email'),
             telefono=request.form.get('telefono'),
-            rol='tecnico'
+            rol='tecnico',
+            tenant_id=get_tenant_id()
         )
         tecnico.set_password(request.form.get('password'))
         db.session.add(tecnico)
         db.session.commit()
-        flash('Técnico creado exitosamente.', 'success')
+        flash('Tecnico creado exitosamente.', 'success')
         return redirect(url_for('admin.tecnicos'))
 
     return render_template('admin/tecnicos/form.html', tecnico=None)
@@ -286,18 +489,29 @@ def tecnico_nuevo():
 @login_required
 @admin_required
 def tecnico_editar(id):
-    tecnico = Usuario.query.get_or_404(id)
+    tecnico = get_tecnicos_query().filter_by(id=id).first_or_404()
 
     if request.method == 'POST':
+        # Verificar si se intenta reactivar un tecnico inactivo
+        quiere_activar = 'activo' in request.form
+        esta_inactivo = not tecnico.activo
+
+        if quiere_activar and esta_inactivo:
+            # Verificar limite del plan antes de reactivar
+            tenant = get_current_tenant()
+            if tenant and not tenant.puede_agregar_tecnico():
+                flash(f'No puedes reactivar este tecnico. Has alcanzado el limite de tu plan ({tenant.plan.max_tecnicos}).', 'warning')
+                return redirect(url_for('admin.tecnicos'))
+
         tecnico.nombre = request.form.get('nombre')
         tecnico.telefono = request.form.get('telefono')
-        tecnico.activo = 'activo' in request.form
+        tecnico.activo = quiere_activar
 
         if request.form.get('password'):
             tecnico.set_password(request.form.get('password'))
 
         db.session.commit()
-        flash('Técnico actualizado.', 'success')
+        flash('Tecnico actualizado.', 'success')
         return redirect(url_for('admin.tecnicos'))
 
     return render_template('admin/tecnicos/form.html', tecnico=tecnico)
@@ -307,7 +521,7 @@ def tecnico_editar(id):
 @login_required
 @admin_required
 def usuario_cliente_nuevo(cliente_id):
-    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente = get_clientes_query().filter_by(id=cliente_id).first_or_404()
 
     if request.method == 'POST':
         if Usuario.query.filter_by(email=request.form.get('email')).first():
@@ -319,7 +533,8 @@ def usuario_cliente_nuevo(cliente_id):
             email=request.form.get('email'),
             telefono=request.form.get('telefono'),
             rol='cliente',
-            cliente_id=cliente.id
+            cliente_id=cliente.id,
+            tenant_id=get_tenant_id()
         )
         usuario.set_password(request.form.get('password'))
         db.session.add(usuario)
@@ -336,12 +551,12 @@ def usuario_cliente_nuevo(cliente_id):
 def tickets():
     estado = request.args.get('estado', 'activos')
     if estado == 'todos':
-        tickets = Ticket.query.order_by(Ticket.fecha_creacion.desc()).all()
+        tickets = get_tickets_query().order_by(Ticket.fecha_creacion.desc()).all()
     elif estado == 'activos':
         # Por defecto: todos excepto cerrados
-        tickets = Ticket.query.filter(Ticket.estado != 'cerrado').order_by(Ticket.fecha_creacion.desc()).all()
+        tickets = get_tickets_query().filter(Ticket.estado != 'cerrado').order_by(Ticket.fecha_creacion.desc()).all()
     else:
-        tickets = Ticket.query.filter_by(estado=estado).order_by(Ticket.fecha_creacion.desc()).all()
+        tickets = get_tickets_query().filter_by(estado=estado).order_by(Ticket.fecha_creacion.desc()).all()
 
     return render_template('admin/tickets/lista.html', tickets=tickets, estado_filtro=estado, estados=ESTADOS_TICKET)
 
@@ -349,28 +564,28 @@ def tickets():
 @login_required
 @admin_required
 def ticket_ver(id):
-    ticket = Ticket.query.get_or_404(id)
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    ticket = get_tickets_query().filter_by(id=id).first_or_404()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     return render_template('admin/tickets/ver.html', ticket=ticket, tecnicos=tecnicos)
 
 @admin_bp.route('/tickets/<int:id>/asignar', methods=['POST'])
 @login_required
 @admin_required
 def ticket_asignar(id):
-    ticket = Ticket.query.get_or_404(id)
+    ticket = get_tickets_query().filter_by(id=id).first_or_404()
     tecnicos_ids = request.form.getlist('tecnicos')
 
     if tecnicos_ids:
-        # Limpiar técnicos actuales
+        # Limpiar tecnicos actuales
         ticket.tecnicos = []
 
-        # Asignar nuevos técnicos
+        # Asignar nuevos tecnicos
         for tecnico_id in tecnicos_ids:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 ticket.tecnicos.append(tecnico)
 
-                # Notificación push al técnico
+                # Notificacion push al tecnico
                 enviar_notificacion_push(
                     tecnico,
                     'Ticket Asignado',
@@ -386,13 +601,13 @@ def ticket_asignar(id):
         notificar_cliente(
             ticket.cliente,
             'Ticket Programado',
-            f'Tu ticket {ticket.numero} ha sido asignado. Pronto un técnico te contactará.',
+            f'Tu ticket {ticket.numero} ha sido asignado. Pronto un tecnico te contactara.',
             url_for('cliente.ticket_ver', id=ticket.id)
         )
 
-        flash('Técnicos asignados correctamente.', 'success')
+        flash('Tecnicos asignados correctamente.', 'success')
     else:
-        flash('Debes seleccionar al menos un técnico.', 'danger')
+        flash('Debes seleccionar al menos un tecnico.', 'danger')
 
     return redirect(url_for('admin.ticket_ver', id=id))
 
@@ -400,7 +615,7 @@ def ticket_asignar(id):
 @login_required
 @admin_required
 def ticket_cerrar(id):
-    ticket = Ticket.query.get_or_404(id)
+    ticket = get_tickets_query().filter_by(id=id).first_or_404()
     ticket.estado = 'cerrado'
     ticket.fecha_resolucion = datetime.utcnow()
     ticket.respuesta_admin = request.form.get('respuesta')
@@ -417,19 +632,19 @@ def ticket_cerrar(id):
     flash('Ticket cerrado.', 'success')
     return redirect(url_for('admin.tickets'))
 
-# ==================== ÓRDENES DE TRABAJO ====================
+# ==================== ORDENES DE TRABAJO ====================
 @admin_bp.route('/ordenes')
 @login_required
 @admin_required
 def ordenes():
     estado = request.args.get('estado', 'activos')
     if estado == 'todos':
-        ordenes = OrdenTrabajo.query.order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+        ordenes = get_ordenes_query().order_by(OrdenTrabajo.fecha_creacion.desc()).all()
     elif estado == 'activos':
         # Por defecto: todos excepto completados y cancelados
-        ordenes = OrdenTrabajo.query.filter(OrdenTrabajo.estado.notin_(['completado', 'cancelado'])).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+        ordenes = get_ordenes_query().filter(OrdenTrabajo.estado.notin_(['completado', 'cancelado'])).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
     else:
-        ordenes = OrdenTrabajo.query.filter_by(estado=estado).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+        ordenes = get_ordenes_query().filter_by(estado=estado).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
 
     return render_template('admin/ordenes/lista.html', ordenes=ordenes, estado_filtro=estado, estados=ESTADOS_ORDEN)
 
@@ -448,14 +663,15 @@ def orden_nueva():
             descripcion_solicitud=request.form.get('descripcion_solicitud'),
             prioridad=request.form.get('prioridad'),
             fecha_programada=datetime.strptime(request.form.get('fecha_programada'), '%Y-%m-%dT%H:%M') if request.form.get('fecha_programada') else None,
-            creado_por_id=current_user.id
+            creado_por_id=current_user.id,
+            tenant_id=get_tenant_id()
         )
 
         if cliente_id:
             orden.cliente_id = cliente_id
             orden.ubicacion_id = ubicacion_id if ubicacion_id else None
         else:
-            # Cliente rápido (llamada telefónica)
+            # Cliente rapido (llamada telefonica)
             orden.cliente_rapido_nombre = request.form.get('cliente_rapido_nombre')
             orden.cliente_rapido_telefono = request.form.get('cliente_rapido_telefono')
             orden.cliente_rapido_direccion = request.form.get('cliente_rapido_direccion')
@@ -463,15 +679,15 @@ def orden_nueva():
         db.session.add(orden)
         db.session.flush()
 
-        # Asignar técnicos si se seleccionaron
+        # Asignar tecnicos si se seleccionaron
         tecnicos_ids = request.form.getlist('tecnicos')
         if tecnicos_ids:
             for tecnico_id in tecnicos_ids:
-                tecnico = Usuario.query.get(tecnico_id)
+                tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
                 if tecnico:
                     orden.tecnicos.append(tecnico)
 
-                    # Notificación push al técnico
+                    # Notificacion push al tecnico
                     enviar_notificacion_push(
                         tecnico,
                         'Nueva Orden de Trabajo',
@@ -485,8 +701,8 @@ def orden_nueva():
         flash('Orden de trabajo creada exitosamente.', 'success')
         return redirect(url_for('admin.orden_ver', id=orden.id))
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     return render_template('admin/ordenes/form.html', orden=None, clientes=clientes, tecnicos=tecnicos,
                            tipos=TIPOS_ORDEN, prioridades=PRIORIDADES)
 
@@ -494,15 +710,15 @@ def orden_nueva():
 @login_required
 @admin_required
 def orden_ver(id):
-    orden = OrdenTrabajo.query.get_or_404(id)
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    orden = get_ordenes_query().filter_by(id=id).first_or_404()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     return render_template('admin/ordenes/ver.html', orden=orden, tecnicos=tecnicos)
 
 @admin_bp.route('/ordenes/<int:id>/asignar', methods=['POST'])
 @login_required
 @admin_required
 def orden_asignar(id):
-    orden = OrdenTrabajo.query.get_or_404(id)
+    orden = get_ordenes_query().filter_by(id=id).first_or_404()
     tecnicos_ids = request.form.getlist('tecnicos')
 
     if tecnicos_ids:
@@ -511,7 +727,7 @@ def orden_asignar(id):
 
         # Asignar nuevos técnicos
         for tecnico_id in tecnicos_ids:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 orden.tecnicos.append(tecnico)
 
@@ -534,7 +750,7 @@ def orden_asignar(id):
 @login_required
 @admin_required
 def orden_finalizar(id):
-    orden = OrdenTrabajo.query.get_or_404(id)
+    orden = get_ordenes_query().filter_by(id=id).first_or_404()
     orden.estado = 'completado'
     orden.fecha_fin = datetime.utcnow()
     orden.notas_admin = request.form.get('notas_admin')
@@ -549,12 +765,12 @@ def orden_finalizar(id):
 def mantenimientos():
     estado = request.args.get('estado', 'activos')
     if estado == 'todos':
-        mantenimientos = Mantenimiento.query.order_by(Mantenimiento.fecha_creacion.desc()).all()
+        mantenimientos = get_mantenimientos_query().order_by(Mantenimiento.fecha_creacion.desc()).all()
     elif estado == 'activos':
         # Por defecto: todos excepto completados
-        mantenimientos = Mantenimiento.query.filter(Mantenimiento.estado != 'completado').order_by(Mantenimiento.fecha_creacion.desc()).all()
+        mantenimientos = get_mantenimientos_query().filter(Mantenimiento.estado != 'completado').order_by(Mantenimiento.fecha_creacion.desc()).all()
     else:
-        mantenimientos = Mantenimiento.query.filter_by(estado=estado).order_by(Mantenimiento.fecha_creacion.desc()).all()
+        mantenimientos = get_mantenimientos_query().filter_by(estado=estado).order_by(Mantenimiento.fecha_creacion.desc()).all()
 
     return render_template('admin/mantenimientos/lista.html', mantenimientos=mantenimientos, estado_filtro=estado)
 
@@ -575,19 +791,20 @@ def mantenimiento_nuevo():
             fecha_programada=datetime.strptime(request.form.get('fecha_programada'), '%Y-%m-%dT%H:%M') if request.form.get('fecha_programada') else None,
             cliente_id=cliente_id,
             ubicacion_id=ubicacion_id,
-            creado_por_id=current_user.id
+            creado_por_id=current_user.id,
+            tenant_id=get_tenant_id()
         )
 
         db.session.add(mantenimiento)
         db.session.flush()
 
-        # Asignar técnicos
+        # Asignar tecnicos
         for tecnico_id in tecnicos_ids:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 mantenimiento.tecnicos.append(tecnico)
 
-                # Notificación push
+                # Notificacion push
                 enviar_notificacion_push(
                     tecnico,
                     'Mantenimiento Asignado',
@@ -595,8 +812,8 @@ def mantenimiento_nuevo():
                     url_for('tecnico.mantenimiento_ver', id=mantenimiento.id)
                 )
 
-        # Agregar equipos existentes de la ubicación al mantenimiento
-        ubicacion = Ubicacion.query.get(ubicacion_id)
+        # Agregar equipos existentes de la ubicacion al mantenimiento
+        ubicacion = get_ubicaciones_query().filter_by(id=ubicacion_id).first()
         for equipo in ubicacion.equipos.filter_by(activo=True):
             mant_equipo = MantenimientoEquipo(
                 mantenimiento_id=mantenimiento.id,
@@ -609,8 +826,8 @@ def mantenimiento_nuevo():
         flash('Mantenimiento programado exitosamente.', 'success')
         return redirect(url_for('admin.mantenimiento_ver', id=mantenimiento.id))
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     return render_template('admin/mantenimientos/form.html', mantenimiento=None, clientes=clientes,
                            tecnicos=tecnicos, tipos=TIPOS_MANTENIMIENTO)
 
@@ -618,15 +835,15 @@ def mantenimiento_nuevo():
 @login_required
 @admin_required
 def mantenimiento_ver(id):
-    mantenimiento = Mantenimiento.query.get_or_404(id)
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    mantenimiento = get_mantenimientos_query().filter_by(id=id).first_or_404()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     return render_template('admin/mantenimientos/ver.html', mantenimiento=mantenimiento, tecnicos=tecnicos)
 
 @admin_bp.route('/mantenimientos/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def mantenimiento_editar(id):
-    mantenimiento = Mantenimiento.query.get_or_404(id)
+    mantenimiento = get_mantenimientos_query().filter_by(id=id).first_or_404()
 
     # Solo permitir editar si no está completado
     if mantenimiento.estado == 'completado':
@@ -657,7 +874,7 @@ def mantenimiento_editar(id):
         # Limpiar y reasignar técnicos
         mantenimiento.tecnicos = []
         for tecnico_id in nuevos_tecnicos_ids:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 mantenimiento.tecnicos.append(tecnico)
 
@@ -665,7 +882,7 @@ def mantenimiento_editar(id):
 
         # Notificar a técnicos nuevos
         for tecnico_id in tecnicos_agregados:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 enviar_notificacion_push(
                     tecnico,
@@ -676,7 +893,7 @@ def mantenimiento_editar(id):
 
         # Notificar a técnicos removidos
         for tecnico_id in tecnicos_removidos:
-            tecnico = Usuario.query.get(tecnico_id)
+            tecnico = get_tecnicos_query().filter_by(id=tecnico_id).first()
             if tecnico:
                 enviar_notificacion_push(
                     tecnico,
@@ -688,9 +905,9 @@ def mantenimiento_editar(id):
         flash('Mantenimiento actualizado exitosamente.', 'success')
         return redirect(url_for('admin.mantenimiento_ver', id=id))
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
-    ubicaciones = Ubicacion.query.filter_by(cliente_id=mantenimiento.cliente_id, activo=True).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
+    ubicaciones = get_ubicaciones_query().filter_by(cliente_id=mantenimiento.cliente_id, activo=True).all()
 
     return render_template('admin/mantenimientos/form.html',
                            mantenimiento=mantenimiento,
@@ -703,7 +920,7 @@ def mantenimiento_editar(id):
 @login_required
 @admin_required
 def mantenimiento_iniciar(id):
-    mantenimiento = Mantenimiento.query.get_or_404(id)
+    mantenimiento = get_mantenimientos_query().filter_by(id=id).first_or_404()
     mantenimiento.estado = 'en_progreso'
     mantenimiento.fecha_inicio = datetime.utcnow()
     db.session.commit()
@@ -714,7 +931,7 @@ def mantenimiento_iniciar(id):
 @login_required
 @admin_required
 def mantenimiento_finalizar(id):
-    mantenimiento = Mantenimiento.query.get_or_404(id)
+    mantenimiento = get_mantenimientos_query().filter_by(id=id).first_or_404()
     mantenimiento.estado = 'completado'
     mantenimiento.fecha_fin = datetime.utcnow()
     mantenimiento.notas_cierre = request.form.get('notas_cierre')
@@ -728,7 +945,7 @@ def mantenimiento_finalizar(id):
 @admin_required
 def agenda():
     from datetime import timedelta
-    from sqlalchemy import func, or_
+    from sqlalchemy import or_
 
     # Obtener rango de fechas (por defecto: hoy + 30 días)
     fecha_inicio = request.args.get('desde')
@@ -744,24 +961,24 @@ def agenda():
     else:
         fecha_fin = fecha_inicio + timedelta(days=30)
 
-    # Obtener órdenes programadas (no completadas/canceladas)
-    ordenes = OrdenTrabajo.query.filter(
+    # Obtener órdenes programadas (no completadas/canceladas) - filtradas por tenant
+    ordenes = get_ordenes_query().filter(
         OrdenTrabajo.fecha_programada.isnot(None),
         OrdenTrabajo.fecha_programada >= fecha_inicio,
         OrdenTrabajo.fecha_programada <= fecha_fin,
         OrdenTrabajo.estado.in_(['pendiente', 'asignado', 'en_progreso'])
     ).order_by(OrdenTrabajo.fecha_programada).all()
 
-    # Obtener mantenimientos programados (no completados)
-    mantenimientos = Mantenimiento.query.filter(
+    # Obtener mantenimientos programados (no completados) - filtrados por tenant
+    mantenimientos = get_mantenimientos_query().filter(
         Mantenimiento.fecha_programada.isnot(None),
         Mantenimiento.fecha_programada >= fecha_inicio,
         Mantenimiento.fecha_programada <= fecha_fin,
         Mantenimiento.estado.in_(['programado', 'en_progreso'])
     ).order_by(Mantenimiento.fecha_programada).all()
 
-    # Obtener tickets asignados (con fecha de asignación como referencia)
-    tickets = Ticket.query.filter(
+    # Obtener tickets asignados (con fecha de asignación como referencia) - filtrados por tenant
+    tickets = get_tickets_query().filter(
         Ticket.estado.in_(['asignado', 'en_progreso']),
         or_(
             Ticket.fecha_asignacion >= fecha_inicio,
@@ -833,8 +1050,8 @@ def agenda():
         eventos_por_dia[dia]['eventos'].append(evento)
         eventos_por_dia[dia]['total_tecnicos'] += evento['tecnicos']
 
-    # Contar técnicos disponibles
-    total_tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).count()
+    # Contar técnicos disponibles - filtrados por tenant
+    total_tecnicos = get_tecnicos_query().filter_by(activo=True).count()
 
     return render_template('admin/agenda/index.html',
                            eventos_por_dia=eventos_por_dia,
@@ -876,8 +1093,8 @@ def reporte_ordenes():
     else:
         fecha_hasta = datetime.utcnow()
 
-    # Query
-    query = OrdenTrabajo.query.filter(
+    # Query - filtrada por tenant
+    query = get_ordenes_query().filter(
         OrdenTrabajo.fecha_creacion >= fecha_desde,
         OrdenTrabajo.fecha_creacion <= fecha_hasta
     )
@@ -900,8 +1117,8 @@ def reporte_ordenes():
             headers={'Content-Disposition': f'attachment;filename=ordenes_{fecha_desde.strftime("%Y%m%d")}_{fecha_hasta.strftime("%Y%m%d")}.xlsx'}
         )
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
 
     return render_template('admin/reportes/ordenes.html',
                            ordenes=ordenes,
@@ -939,7 +1156,8 @@ def reporte_mantenimientos():
     else:
         fecha_hasta = datetime.utcnow()
 
-    query = Mantenimiento.query.filter(
+    # Query - filtrada por tenant
+    query = get_mantenimientos_query().filter(
         Mantenimiento.fecha_creacion >= fecha_desde,
         Mantenimiento.fecha_creacion <= fecha_hasta
     )
@@ -959,7 +1177,7 @@ def reporte_mantenimientos():
             headers={'Content-Disposition': f'attachment;filename=mantenimientos_{fecha_desde.strftime("%Y%m%d")}_{fecha_hasta.strftime("%Y%m%d")}.xlsx'}
         )
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
 
     return render_template('admin/reportes/mantenimientos.html',
                            mantenimientos=mantenimientos,
@@ -993,7 +1211,8 @@ def reporte_tickets():
     else:
         fecha_hasta = datetime.utcnow()
 
-    query = Ticket.query.filter(
+    # Query - filtrada por tenant
+    query = get_tickets_query().filter(
         Ticket.fecha_creacion >= fecha_desde,
         Ticket.fecha_creacion <= fecha_hasta
     )
@@ -1013,7 +1232,7 @@ def reporte_tickets():
             headers={'Content-Disposition': f'attachment;filename=tickets_{fecha_desde.strftime("%Y%m%d")}_{fecha_hasta.strftime("%Y%m%d")}.xlsx'}
         )
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
 
     return render_template('admin/reportes/tickets.html',
                            tickets=tickets,
@@ -1046,28 +1265,29 @@ def reporte_productividad():
     else:
         fecha_hasta = datetime.utcnow()
 
-    tecnicos = Usuario.query.filter_by(rol='tecnico', activo=True).all()
+    # Técnicos - filtrados por tenant
+    tecnicos = get_tecnicos_query().filter_by(activo=True).all()
     tecnicos_data = []
 
     for tecnico in tecnicos:
-        # Órdenes completadas
-        ordenes_completadas = OrdenTrabajo.query.filter(
+        # Órdenes completadas - filtradas por tenant
+        ordenes_completadas = get_ordenes_query().filter(
             OrdenTrabajo.tecnicos.any(Usuario.id == tecnico.id),
             OrdenTrabajo.estado == 'completado',
             OrdenTrabajo.fecha_fin >= fecha_desde,
             OrdenTrabajo.fecha_fin <= fecha_hasta
         ).count()
 
-        # Mantenimientos completados
-        mantenimientos_completados = Mantenimiento.query.filter(
+        # Mantenimientos completados - filtrados por tenant
+        mantenimientos_completados = get_mantenimientos_query().filter(
             Mantenimiento.tecnicos.any(Usuario.id == tecnico.id),
             Mantenimiento.estado == 'completado',
             Mantenimiento.fecha_fin >= fecha_desde,
             Mantenimiento.fecha_fin <= fecha_hasta
         ).count()
 
-        # Tickets resueltos
-        tickets_resueltos = Ticket.query.filter(
+        # Tickets resueltos - filtrados por tenant
+        tickets_resueltos = get_tickets_query().filter(
             Ticket.tecnicos.any(Usuario.id == tecnico.id),
             Ticket.estado.in_(['resuelto', 'cerrado']),
             Ticket.fecha_resolucion >= fecha_desde,
@@ -1118,7 +1338,7 @@ def reporte_cliente():
     cliente_id = request.args.get('cliente_id', type=int)
     exportar = request.args.get('exportar')
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
 
     if not cliente_id:
         return render_template('admin/reportes/cliente.html',
@@ -1128,10 +1348,10 @@ def reporte_cliente():
                                mantenimientos=[],
                                tickets=[])
 
-    cliente = Cliente.query.get_or_404(cliente_id)
-    ordenes = OrdenTrabajo.query.filter_by(cliente_id=cliente_id).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
-    mantenimientos = Mantenimiento.query.filter_by(cliente_id=cliente_id).order_by(Mantenimiento.fecha_creacion.desc()).all()
-    tickets = Ticket.query.filter_by(cliente_id=cliente_id).order_by(Ticket.fecha_creacion.desc()).all()
+    cliente = get_clientes_query().filter_by(id=cliente_id).first_or_404()
+    ordenes = get_ordenes_query().filter_by(cliente_id=cliente_id).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+    mantenimientos = get_mantenimientos_query().filter_by(cliente_id=cliente_id).order_by(Mantenimiento.fecha_creacion.desc()).all()
+    tickets = get_tickets_query().filter_by(cliente_id=cliente_id).order_by(Ticket.fecha_creacion.desc()).all()
 
     if exportar == 'excel':
         output = exportar_historial_cliente(cliente, ordenes, mantenimientos, tickets)
@@ -1160,12 +1380,13 @@ def reporte_equipos():
     tipo = request.args.get('tipo')
     exportar = request.args.get('exportar')
 
-    query = Equipo.query.filter_by(activo=True)
+    # Query - filtrada por tenant
+    query = get_equipos_query().filter_by(activo=True)
 
     if ubicacion_id:
         query = query.filter_by(ubicacion_id=ubicacion_id)
     elif cliente_id:
-        ubicaciones_ids = [u.id for u in Ubicacion.query.filter_by(cliente_id=cliente_id, activo=True).all()]
+        ubicaciones_ids = [u.id for u in get_ubicaciones_query().filter_by(cliente_id=cliente_id, activo=True).all()]
         query = query.filter(Equipo.ubicacion_id.in_(ubicaciones_ids))
 
     if tipo:
@@ -1176,7 +1397,7 @@ def reporte_equipos():
     if exportar == 'excel':
         titulo = "Inventario de Equipos"
         if cliente_id:
-            cliente = Cliente.query.get(cliente_id)
+            cliente = get_clientes_query().filter_by(id=cliente_id).first()
             titulo = f"Inventario - {cliente.nombre}"
         output = exportar_equipos(equipos, titulo)
         return Response(
@@ -1185,10 +1406,10 @@ def reporte_equipos():
             headers={'Content-Disposition': f'attachment;filename=inventario_equipos.xlsx'}
         )
 
-    clientes = Cliente.query.filter_by(activo=True).order_by(Cliente.nombre).all()
+    clientes = get_clientes_query().filter_by(activo=True).order_by(Cliente.nombre).all()
     ubicaciones = []
     if cliente_id:
-        ubicaciones = Ubicacion.query.filter_by(cliente_id=cliente_id, activo=True).order_by(Ubicacion.nombre).all()
+        ubicaciones = get_ubicaciones_query().filter_by(cliente_id=cliente_id, activo=True).order_by(Ubicacion.nombre).all()
 
     return render_template('admin/reportes/equipos.html',
                            equipos=equipos,
@@ -1204,5 +1425,6 @@ def reporte_equipos():
 @login_required
 @admin_required
 def api_ubicaciones_cliente(cliente_id):
-    ubicaciones = Ubicacion.query.filter_by(cliente_id=cliente_id, activo=True).all()
+    # Filtrar por tenant
+    ubicaciones = get_ubicaciones_query().filter_by(cliente_id=cliente_id, activo=True).all()
     return jsonify([{'id': u.id, 'nombre': u.nombre, 'direccion': u.direccion} for u in ubicaciones])

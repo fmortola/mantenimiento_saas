@@ -34,28 +34,25 @@ def create_app(config_class=Config):
     from app.routes.tecnico import tecnico_bp
     from app.routes.cliente import cliente_bp
     from app.routes.api import api_bp
+    from app.routes.superadmin import superadmin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(tecnico_bp, url_prefix='/tecnico')
     app.register_blueprint(cliente_bp, url_prefix='/cliente')
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
+
+    # Importar todos los modelos para que SQLAlchemy los conozca
+    from app.models import (
+        Plan, Tenant, Usuario, Cliente, Ubicacion, TipoEquipo,
+        PlantillaTipoEquipo, PlantillaTipoEquipoItem, Equipo,
+        OrdenTrabajo, FotoTrabajo, OrdenActividad, Ticket,
+        Mantenimiento, MantenimientoEquipo, PushSubscription, Notificacion
+    )
 
     # Crear tablas si no existen
     with app.app_context():
         db.create_all()
-        # Crear usuario admin por defecto si no existe
-        from app.models.usuario import Usuario
-        admin = Usuario.query.filter_by(email='admin@admin.com').first()
-        if not admin:
-            admin = Usuario(
-                nombre='Administrador',
-                email='admin@admin.com',
-                telefono='0000000000',
-                rol='admin'
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-            db.session.commit()
 
     return app

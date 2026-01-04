@@ -1,0 +1,111 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Editar' if tipo else 'Nuevo' }} Tipo de Equipo - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="mb-4">
+    <a href="{{ url_for('admin.tipos_equipo') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-tag"></i>
+                    {{ 'Editar' if tipo else 'Nuevo' }} Tipo de Equipo
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" class="form-control" name="nombre" value="{{ tipo.nombre if tipo else '' }}" required placeholder="Ej: Refrigerador, Aire Acondicionado">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Icono</label>
+                        <select class="form-select" name="icono" id="icono-select">
+                            {% set iconos = [
+                                ('bi-gear', 'Engranaje (default)'),
+                                ('bi-pc-display', 'Computadora'),
+                                ('bi-laptop', 'Laptop'),
+                                ('bi-printer', 'Impresora'),
+                                ('bi-display', 'Monitor'),
+                                ('bi-hdd-rack', 'Servidor'),
+                                ('bi-router', 'Router'),
+                                ('bi-box-seam', 'Caja/Refrigerador'),
+                                ('bi-droplet', 'Gota/Lavadora'),
+                                ('bi-wind', 'Viento/Secadora'),
+                                ('bi-fire', 'Fuego/Cocina'),
+                                ('bi-snow', 'Nieve/Aire Frio'),
+                                ('bi-thermometer-sun', 'Calor'),
+                                ('bi-fan', 'Ventilador'),
+                                ('bi-lightning', 'Electricidad'),
+                                ('bi-wrench', 'Herramienta'),
+                                ('bi-tools', 'Herramientas'),
+                                ('bi-truck', 'Vehiculo'),
+                                ('bi-camera', 'Camara'),
+                                ('bi-phone', 'Telefono'),
+                                ('bi-wifi', 'WiFi'),
+                                ('bi-cpu', 'CPU/Procesador'),
+                                ('bi-motherboard', 'Tarjeta madre'),
+                                ('bi-hdd', 'Disco duro'),
+                                ('bi-usb-drive', 'USB'),
+                                ('bi-outlet', 'Enchufe'),
+                                ('bi-lamp', 'Lampara'),
+                                ('bi-house', 'Casa'),
+                                ('bi-building', 'Edificio'),
+                            ] %}
+                            {% for valor, nombre in iconos %}
+                            <option value="{{ valor }}" {% if tipo and tipo.icono == valor %}selected{% elif not tipo and valor == 'bi-gear' %}selected{% endif %}>
+                                {{ nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="mt-2">
+                            <span class="text-muted">Vista previa:</span>
+                            <i id="icono-preview" class="{{ tipo.icono if tipo else 'bi-gear' }} fs-3 ms-2 text-primary"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descripcion</label>
+                        <input type="text" class="form-control" name="descripcion" value="{{ tipo.descripcion if tipo else '' }}" placeholder="Descripcion opcional">
+                    </div>
+
+                    {% if tipo %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="activo" id="activo" {% if tipo.activo %}checked{% endif %}>
+                            <label class="form-check-label" for="activo">
+                                Activo
+                            </label>
+                        </div>
+                        <small class="text-muted">Los tipos inactivos no aparecen al crear equipos</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('icono-select').addEventListener('change', function() {
+    document.getElementById('icono-preview').className = this.value + ' fs-3 ms-2 text-primary';
+});
+</script>
+{% endblock %}

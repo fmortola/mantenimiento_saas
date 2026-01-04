@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block flash_messages %}{% endblock %}
+
 {% block extra_css %}
 <!-- Intro.js para tours guiados -->
 <link href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css" rel="stylesheet">
@@ -121,6 +123,17 @@
 
 {% block content %}
 <div class="container-fluid py-3">
+    <!-- Alertas Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     {% block cliente_content %}{% endblock %}
 </div>
 
@@ -146,17 +159,25 @@
         <i class="bi bi-house"></i>
         <span>Inicio</span>
     </a>
-    <a href="{{ url_for('cliente.ubicaciones') }}" class="{{ 'active' if 'ubicacion' in request.endpoint }}" id="nav-ubicaciones">
-        <i class="bi bi-geo-alt"></i>
-        <span>Ubicaciones</span>
+    <a href="{{ url_for('cliente.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint }}" id="nav-tickets">
+        <i class="bi bi-ticket"></i>
+        <span>Tickets</span>
     </a>
+    {% if current_user.tenant.plan.cliente_ve_ordenes %}
+    <a href="{{ url_for('cliente.ordenes') }}" class="{{ 'active' if 'orden' in request.endpoint }}" id="nav-ordenes">
+        <i class="bi bi-clipboard-check"></i>
+        <span>Órdenes</span>
+    </a>
+    {% endif %}
+    {% if current_user.tenant.plan.cliente_ve_mantenimientos %}
+    <a href="{{ url_for('cliente.mantenimientos') }}" class="{{ 'active' if 'mantenimiento' in request.endpoint }}" id="nav-mantenimientos">
+        <i class="bi bi-calendar-check"></i>
+        <span>Mant.</span>
+    </a>
+    {% endif %}
     <a href="{{ url_for('cliente.ticket_nuevo') }}" class="{{ 'active' if request.endpoint == 'cliente.ticket_nuevo' }}" id="nav-soporte">
         <i class="bi bi-plus-circle"></i>
         <span>Soporte</span>
-    </a>
-    <a href="{{ url_for('cliente.tickets') }}" class="{{ 'active' if 'ticket' in request.endpoint and request.endpoint != 'cliente.ticket_nuevo' }}" id="nav-tickets">
-        <i class="bi bi-ticket"></i>
-        <span>Tickets</span>
     </a>
 </nav>
 {% endblock %}

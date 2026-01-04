@@ -2,6 +2,16 @@
 
 {% block body_class %}has-sidebar{% endblock %}
 
+{% block flash_messages %}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css" rel="stylesheet">
+<style>
+    .introjs-tooltip { max-width: 320px; }
+    .introjs-button { padding: 8px 16px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex">
     <!-- Sidebar -->
@@ -26,8 +36,13 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white {{ 'active' if 'equipo' in request.endpoint }}" href="{{ url_for('admin.equipos') }}">
+                <a class="nav-link text-white {{ 'active' if 'equipo' in request.endpoint and 'tipo' not in request.endpoint }}" href="{{ url_for('admin.equipos') }}">
                     <i class="bi bi-pc-display"></i> Equipos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if 'tipo' in request.endpoint }}" href="{{ url_for('admin.tipos_equipo') }}">
+                    <i class="bi bi-tags"></i> Tipos de Equipo
                 </a>
             </li>
             <li class="nav-item mt-2">
@@ -70,7 +85,30 @@
 
     <!-- Contenido principal -->
     <div class="main-wrapper flex-grow-1">
+        {% if current_user.es_superadmin() and session.get('impersonate_tenant_id') %}
+        <!-- Banner de Impersonación (solo para SuperAdmin) -->
+        <div class="alert alert-info alert-dismissible mb-0 rounded-0 d-flex justify-content-between align-items-center" role="alert" style="border-left: 4px solid #0d6efd;">
+            <div>
+                <i class="bi bi-eye-fill me-2"></i>
+                <strong>Modo SuperAdmin:</strong> Viendo sistema como "{{ session.get('impersonate_tenant_nombre', 'Tenant') }}"
+            </div>
+            <a href="{{ url_for('superadmin.salir_impersonacion') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-box-arrow-left"></i> Volver a SuperAdmin
+            </a>
+        </div>
+        {% endif %}
         <div class="container-fluid py-3">
+            <!-- Alertas Flash (dentro del área de contenido) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
             {% block admin_content %}{% endblock %}
         </div>
     </div>
@@ -97,4 +135,89 @@
     </a>
 </nav>
 {% endblock %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
+<script>
+// Tours por página para Admin
+function getTourSteps() {
+    const path = window.location.pathname;
+
+    // Tour del Dashboard
+    if (path.includes('/admin/dashboard') || path === '/admin/' || path === '/admin') {
+        return [
+            { title: 'Bienvenido al Panel de Admin', intro: 'Este es tu centro de control. Aquí puedes gestionar clientes, técnicos, equipos y más.' },
+            { element: '.sidebar', title: 'Menú Lateral', intro: 'Navega entre las diferentes secciones del sistema desde aquí.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="clientes"]', title: 'Clientes', intro: 'Gestiona los clientes de tu empresa, sus ubicaciones y equipos.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="tecnicos"]', title: 'Técnicos', intro: 'Administra tu equipo de técnicos.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="tickets"]', title: 'Tickets', intro: 'Ve y gestiona las solicitudes de soporte de tus clientes.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="ordenes"]', title: 'Órdenes de Trabajo', intro: 'Crea y administra las órdenes de trabajo para tus técnicos.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="mantenimiento"]', title: 'Mantenimientos', intro: 'Programa mantenimientos preventivos y correctivos.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="agenda"]', title: 'Agenda', intro: 'Visualiza el calendario de trabajos programados.', position: 'right' },
+            { element: '.sidebar .nav-link[href*="reportes"]', title: 'Reportes', intro: 'Genera reportes y estadísticas de tu operación.', position: 'right' },
+            { title: '¡Listo!', intro: 'Presiona el botón de ayuda (?) en cualquier momento para ver esta guía nuevamente.' }
+        ];
+    }
+
+    // Tour de Clientes
+    if (path.includes('/admin/clientes')) {
+        return [
+            { title: 'Gestión de Clientes', intro: 'Aquí puedes ver y administrar todos tus clientes.' },
+            { element: '.btn-primary[href*="nuevo"]', title: 'Nuevo Cliente', intro: 'Crea un nuevo cliente con sus datos de contacto.', position: 'left' },
+            { title: 'Ubicaciones y Equipos', intro: 'Cada cliente puede tener múltiples ubicaciones, y cada ubicación puede tener múltiples equipos registrados.' }
+        ];
+    }
+
+    // Tour de Tickets
+    if (path.includes('/admin/tickets')) {
+        return [
+            { title: 'Tickets de Soporte', intro: 'Los tickets son solicitudes de soporte creadas por tus clientes.' },
+            { title: 'Flujo de Trabajo', intro: 'Un ticket puede convertirse en una Orden de Trabajo cuando lo asignas a un técnico.' },
+            { title: 'Estados', intro: 'Los tickets pasan por: Abierto → Asignado → En Progreso → Resuelto' }
+        ];
+    }
+
+    // Tour de Órdenes
+    if (path.includes('/admin/ordenes')) {
+        return [
+            { title: 'Órdenes de Trabajo', intro: 'Las órdenes son trabajos asignados a técnicos.' },
+            { element: '.btn-primary[href*="nueva"]', title: 'Nueva Orden', intro: 'Crea una orden desde un ticket existente o directamente.', position: 'left' },
+            { title: 'Seguimiento', intro: 'Los técnicos actualizan el estado desde su app móvil, incluyendo fotos del trabajo.' }
+        ];
+    }
+
+    // Tour genérico
+    return [
+        { title: 'Ayuda', intro: 'Usa el menú lateral para navegar entre secciones. Si necesitas ayuda específica, contacta a soporte.' }
+    ];
+}
+
+function iniciarTour() {
+    const steps = getTourSteps().filter(step => {
+        if (!step.element) return true;
+        return document.querySelector(step.element);
+    });
+
+    introJs().setOptions({
+        steps: steps,
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
+        doneLabel: 'Entendido',
+        showProgress: true,
+        showBullets: true,
+        exitOnOverlayClick: true
+    }).start();
+}
+
+// Mostrar tour en primera visita al dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    const path = window.location.pathname;
+    const tourVisto = localStorage.getItem('tour_admin_visto');
+    if (!tourVisto && (path.includes('/admin/dashboard') || path === '/admin/' || path === '/admin')) {
+        setTimeout(iniciarTour, 1000);
+        localStorage.setItem('tour_admin_visto', 'true');
+    }
+});
+</script>
 {% endblock %}

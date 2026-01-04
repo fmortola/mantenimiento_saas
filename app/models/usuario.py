@@ -17,9 +17,13 @@ class Usuario(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     telefono = db.Column(db.String(20))
-    rol = db.Column(db.String(20), nullable=False)  # admin, tecnico, cliente
+    rol = db.Column(db.String(20), nullable=False)  # superadmin, admin, tecnico, cliente
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relacion con Tenant (NULL solo para superadmin)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
+    tenant = db.relationship('Tenant', backref='usuarios')
 
     # Relación con cliente (si el usuario es de tipo cliente)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
@@ -36,6 +40,9 @@ class Usuario(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def es_superadmin(self):
+        return self.rol == 'superadmin'
+
     def es_admin(self):
         return self.rol == 'admin'
 
@@ -44,6 +51,16 @@ class Usuario(UserMixin, db.Model):
 
     def es_cliente(self):
         return self.rol == 'cliente'
+
+    def puede_acceder(self):
+        """Verifica si el usuario puede acceder al sistema"""
+        if self.es_superadmin():
+            return True
+        if not self.activo:
+            return False
+        if self.tenant and not self.tenant.esta_activo():
+            return False
+        return True
 
     def __repr__(self):
         return f'<Usuario {self.nombre}>'

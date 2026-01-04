@@ -25,7 +25,13 @@
                 <p class="mb-1 small">
                     {% if orden.cliente %}{{ orden.cliente.nombre }}{% else %}{{ orden.cliente_rapido_nombre }}{% endif %}
                 </p>
+                {% if orden.fecha_programada %}
+                <small class="text-primary fw-bold">
+                    <i class="bi bi-calendar-event"></i> {{ orden.fecha_programada.strftime('%d/%m/%Y %H:%M') }}
+                </small>
+                {% else %}
                 <small class="text-muted">{{ orden.tipo }} | {{ orden.fecha_creacion.strftime('%d/%m/%Y') }}</small>
+                {% endif %}
             </div>
             <span class="badge bg-{{ 'success' if orden.estado == 'completado' else 'primary' if orden.estado == 'en_progreso' else 'secondary' }}">
                 {{ orden.estado }}

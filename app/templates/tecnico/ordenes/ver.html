@@ -18,6 +18,13 @@
         </span>
     </div>
     <div class="card-body">
+        {% if orden.fecha_programada %}
+        <div class="alert alert-info py-2 mb-3">
+            <i class="bi bi-calendar-event"></i>
+            <strong>Visita programada:</strong> {{ orden.fecha_programada.strftime('%d/%m/%Y a las %H:%M') }}
+        </div>
+        {% endif %}
+
         <p class="mb-2">
             <i class="bi bi-building text-muted"></i>
             <strong>{% if orden.cliente %}{{ orden.cliente.nombre }}{% else %}{{ orden.cliente_rapido_nombre }}{% endif %}</strong>

@@ -236,6 +236,72 @@ body {
     }
 }
 
+/* Dropdowns en móvil - fix posicionamiento */
+@media (max-width: 575.98px) {
+    /* Notificaciones dropdown - ancho completo en móvil */
+    .navbar .notif-dropdown {
+        position: fixed !important;
+        top: var(--navbar-height) !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+        transform: none !important;
+    }
+
+    /* Usuario dropdown - ancho completo en móvil */
+    .navbar .dropdown-menu:not(.notif-dropdown) {
+        position: fixed !important;
+        top: var(--navbar-height) !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+        transform: none !important;
+    }
+
+    /* Email completo visible */
+    .navbar .dropdown-item-text {
+        word-break: break-all;
+        white-space: normal;
+    }
+}
+
+/* Intro.js mejoras para iOS */
+.introjs-tooltip {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.introjs-helperLayer {
+    -webkit-transition: all 0.3s ease-out;
+    transition: all 0.3s ease-out;
+}
+
+.introjs-overlay {
+    -webkit-transition: opacity 0.3s ease-out;
+    transition: opacity 0.3s ease-out;
+}
+
+/* iOS Safari fix para animaciones */
+@supports (-webkit-touch-callout: none) {
+    .introjs-tooltip {
+        -webkit-animation: none;
+        animation: introjs-fadeIn 0.3s ease-out;
+    }
+
+    .introjs-helperLayer {
+        box-shadow: rgba(33, 33, 33, 0.5) 0px 0px 0px 5000px !important;
+    }
+}
+
+@keyframes introjs-fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
 /* Loading overlay */
 .loading-overlay {
     position: fixed;

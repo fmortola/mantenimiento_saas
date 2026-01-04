@@ -490,7 +490,25 @@ def orden_subir_foto(id):
 
     filename = f"{uuid.uuid4().hex}.jpg"
     filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    foto.save(filepath)
+
+    # Aplicar rotación EXIF y guardar correctamente orientada
+    from PIL import Image as PILImage
+    from PIL import ImageOps
+    import io as pil_io
+
+    # Leer imagen desde el archivo subido
+    foto_data = foto.read()
+    pil_img = PILImage.open(pil_io.BytesIO(foto_data))
+
+    # Aplicar rotación según EXIF
+    pil_img = ImageOps.exif_transpose(pil_img)
+
+    # Convertir a RGB si es necesario (para JPEG)
+    if pil_img.mode in ('RGBA', 'P'):
+        pil_img = pil_img.convert('RGB')
+
+    # Guardar con orientación correcta
+    pil_img.save(filepath, 'JPEG', quality=85)
 
     foto_trabajo = FotoTrabajo(
         ruta=filename,

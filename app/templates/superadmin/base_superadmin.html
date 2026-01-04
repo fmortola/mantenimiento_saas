@@ -27,6 +27,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link text-white {{ 'active' if request.endpoint == 'superadmin.usuarios' }}" href="{{ url_for('superadmin.usuarios') }}">
+                    <i class="bi bi-people"></i> Usuarios
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link text-white {{ 'active' if 'plan' in request.endpoint }}" href="{{ url_for('superadmin.planes') }}">
                     <i class="bi bi-credit-card"></i> Planes
                 </a>

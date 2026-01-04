@@ -4,26 +4,105 @@
 
 {% block extra_css %}
 <style>
-    .signature-container {
-        background: #fff;
-        border: 2px solid #dee2e6;
-        border-radius: 10px;
-        position: relative;
-    }
-    #signature-pad {
-        width: 100%;
-        height: 250px;
-        touch-action: none;
-    }
     .signature-info {
         background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
         border-radius: 10px;
     }
-    .btn-clear-signature {
+
+    /* Modal fullscreen para firma */
+    .firma-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        z-index: 9999;
+    }
+
+    .firma-modal.active {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .firma-modal-header {
+        padding: 10px 15px;
+        background: #0d6efd;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .firma-modal-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .firma-canvas-container {
+        flex: 1;
+        position: relative;
+        background: #fff;
+        border: 3px solid #dee2e6;
+        margin: 10px;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    #signature-pad {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+    }
+
+    .firma-modal-footer {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        display: flex;
+        gap: 10px;
+    }
+
+    .firma-modal-footer .btn {
+        flex: 1;
+        padding: 15px;
+        font-size: 1.1rem;
+    }
+
+    /* Forzar landscape en el modal */
+    @media screen and (orientation: portrait) {
+        .firma-modal-body .rotate-hint {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #fff3cd;
+            color: #856404;
+        }
+    }
+
+    @media screen and (orientation: landscape) {
+        .firma-modal-body .rotate-hint {
+            display: none;
+        }
+    }
+
+    .firma-line {
         position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 10;
+        bottom: 60px;
+        left: 30px;
+        right: 30px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .firma-label {
+        position: absolute;
+        bottom: 35px;
+        left: 30px;
+        color: #999;
+        font-size: 14px;
     }
 </style>
 {% endblock %}
@@ -34,7 +113,7 @@
 </a>
 
 <div class="text-center mb-4">
-    <h4><i class="bi bi-pen"></i> Firma del Cliente</h4>
+    <h4><i class="bi bi-pen"></i> Completar Orden</h4>
     <p class="text-muted">Orden {{ orden.numero }}</p>
 </div>
 
@@ -42,32 +121,32 @@
 <div class="card mb-4 signature-info">
     <div class="card-body">
         <h6 class="mb-3"><i class="bi bi-clipboard-check"></i> Resumen del Trabajo</h6>
-        
+
         <p class="mb-2">
-            <strong>Cliente:</strong> 
+            <strong>Cliente:</strong>
             {% if orden.cliente %}{{ orden.cliente.nombre }}{% else %}{{ orden.cliente_rapido_nombre }}{% endif %}
         </p>
-        
+
         {% if orden.ubicacion %}
         <p class="mb-2">
             <strong>Ubicacion:</strong> {{ orden.ubicacion.nombre }}
         </p>
         {% endif %}
-        
+
         <p class="mb-2">
             <strong>Tipo:</strong> {{ orden.tipo }}
         </p>
-        
+
         <p class="mb-2">
             <strong>Solicitud:</strong> {{ orden.descripcion_solicitud[:100] }}{% if orden.descripcion_solicitud|length > 100 %}...{% endif %}
         </p>
-        
+
         {% if orden.descripcion_trabajo %}
         <p class="mb-2">
             <strong>Trabajo realizado:</strong> {{ orden.descripcion_trabajo[:100] }}{% if orden.descripcion_trabajo|length > 100 %}...{% endif %}
         </p>
         {% endif %}
-        
+
         <p class="mb-0">
             <strong>Tecnico:</strong> {{ current_user.nombre }}
         </p>
@@ -77,103 +156,183 @@
 <form id="form-firma" method="POST" action="{{ url_for('tecnico.orden_completar_con_firma', id=orden.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" id="firma_data" name="firma_data">
-    
+
     {% if not orden.descripcion_trabajo %}
     <div class="card mb-3">
         <div class="card-body">
             <label class="form-label">Descripcion del trabajo realizado *</label>
-            <textarea class="form-control" name="descripcion_trabajo" rows="3" required>{{ orden.descripcion_trabajo or '' }}</textarea>
+            <textarea class="form-control" name="descripcion_trabajo" id="descripcion_trabajo" rows="3" required>{{ orden.descripcion_trabajo or '' }}</textarea>
         </div>
     </div>
     {% else %}
     <input type="hidden" name="descripcion_trabajo" value="{{ orden.descripcion_trabajo }}">
     {% endif %}
-    
+
     <input type="hidden" name="tiempo_real" value="{{ orden.tiempo_real or '' }}">
-    
+
     <!-- Nombre de quien firma -->
     <div class="mb-3">
-        <label for="firma_nombre" class="form-label">Nombre de quien firma *</label>
-        <input type="text" class="form-control form-control-lg" id="firma_nombre" name="firma_nombre" 
-               placeholder="Nombre completo" required>
+        <label for="firma_nombre" class="form-label">Nombre de quien recibe/firma *</label>
+        <input type="text" class="form-control form-control-lg" id="firma_nombre" name="firma_nombre"
+               placeholder="Nombre completo del cliente" required>
     </div>
-    
-    <!-- Canvas de firma -->
-    <div class="mb-3">
-        <label class="form-label">Firma del cliente *</label>
-        <div class="signature-container">
-            <button type="button" class="btn btn-sm btn-outline-danger btn-clear-signature" onclick="limpiarFirma()">
-                <i class="bi bi-eraser"></i> Limpiar
-            </button>
-            <canvas id="signature-pad"></canvas>
-        </div>
-        <small class="text-muted">Firme con el dedo o un stylus en el area de arriba</small>
+
+    <!-- Preview de firma (si ya hay) -->
+    <div id="firma-preview" class="mb-3 text-center" style="display: none;">
+        <p class="text-success mb-2"><i class="bi bi-check-circle"></i> Firma capturada</p>
+        <img id="firma-preview-img" style="max-height: 100px; border: 1px solid #ddd; border-radius: 5px;">
     </div>
-    
-    <!-- Botones -->
+
+    <!-- Boton para abrir modal de firma -->
+    <div class="d-grid gap-2 mb-4">
+        <button type="button" class="btn btn-primary btn-lg" onclick="abrirModalFirma()">
+            <i class="bi bi-pen"></i> Capturar Firma del Cliente
+        </button>
+    </div>
+
+    <!-- Botones finales -->
     <div class="d-grid gap-2 mb-5">
-        <button type="submit" class="btn btn-success btn-lg">
-            <i class="bi bi-check-lg"></i> Confirmar y Completar Orden
+        <button type="submit" class="btn btn-success btn-lg" id="btn-completar" disabled>
+            <i class="bi bi-check-lg"></i> Completar Orden
         </button>
         <a href="{{ url_for('tecnico.orden_ver', id=orden.id) }}" class="btn btn-outline-secondary">
             Cancelar
         </a>
     </div>
 </form>
+
+<!-- Modal Fullscreen para Firma -->
+<div id="firma-modal" class="firma-modal">
+    <div class="firma-modal-header">
+        <span><i class="bi bi-pen"></i> Firma del Cliente</span>
+        <button type="button" class="btn btn-light btn-sm" onclick="cerrarModalFirma()">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="firma-modal-body">
+        <div class="rotate-hint">
+            <i class="bi bi-phone-landscape"></i> Gire el telefono para mejor experiencia
+        </div>
+
+        <div class="firma-canvas-container">
+            <canvas id="signature-pad"></canvas>
+            <div class="firma-line"></div>
+            <div class="firma-label">Firma aqui</div>
+        </div>
+    </div>
+
+    <div class="firma-modal-footer">
+        <button type="button" class="btn btn-outline-danger" onclick="limpiarFirma()">
+            <i class="bi bi-eraser"></i> Limpiar
+        </button>
+        <button type="button" class="btn btn-success" onclick="confirmarFirma()">
+            <i class="bi bi-check-lg"></i> Confirmar Firma
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
     let signaturePad;
-    
-    document.addEventListener('DOMContentLoaded', function() {
+    let firmaCapturada = false;
+
+    function initSignaturePad() {
         const canvas = document.getElementById('signature-pad');
-        
-        // Ajustar tamano del canvas
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = container.offsetWidth * ratio;
-            canvas.height = 250 * ratio;
-            canvas.style.width = container.offsetWidth + 'px';
-            canvas.style.height = '250px';
-            canvas.getContext('2d').scale(ratio, ratio);
-            
-            if (signaturePad) {
-                signaturePad.clear();
-            }
-        }
-        
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        
-        // Inicializar signature pad
+        const container = canvas.parentElement;
+
+        // Ajustar tamano del canvas al contenedor
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = container.offsetWidth * ratio;
+        canvas.height = container.offsetHeight * ratio;
+        canvas.style.width = container.offsetWidth + 'px';
+        canvas.style.height = container.offsetHeight + 'px';
+        canvas.getContext('2d').scale(ratio, ratio);
+
         signaturePad = new SignaturePad(canvas, {
             backgroundColor: 'rgb(255, 255, 255)',
-            penColor: 'rgb(0, 0, 0)',
-            minWidth: 1,
-            maxWidth: 3
+            penColor: 'rgb(0, 0, 100)',
+            minWidth: 1.5,
+            maxWidth: 4
         });
-    });
-    
+    }
+
+    function abrirModalFirma() {
+        const nombre = document.getElementById('firma_nombre').value.trim();
+        if (!nombre) {
+            alert('Por favor ingrese el nombre de quien firma primero.');
+            document.getElementById('firma_nombre').focus();
+            return;
+        }
+
+        {% if not orden.descripcion_trabajo %}
+        const descripcion = document.getElementById('descripcion_trabajo').value.trim();
+        if (!descripcion) {
+            alert('Por favor ingrese la descripcion del trabajo realizado.');
+            document.getElementById('descripcion_trabajo').focus();
+            return;
+        }
+        {% endif %}
+
+        document.getElementById('firma-modal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        // Inicializar o reinicializar el pad
+        setTimeout(function() {
+            initSignaturePad();
+        }, 100);
+    }
+
+    function cerrarModalFirma() {
+        document.getElementById('firma-modal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
     function limpiarFirma() {
         if (signaturePad) {
             signaturePad.clear();
         }
     }
-    
-    // Validar formulario antes de enviar
-    document.getElementById('form-firma').addEventListener('submit', function(e) {
+
+    function confirmarFirma() {
         if (signaturePad.isEmpty()) {
-            e.preventDefault();
             alert('Por favor, solicite al cliente que firme.');
+            return;
+        }
+
+        // Guardar firma
+        const firmaData = signaturePad.toDataURL('image/png');
+        document.getElementById('firma_data').value = firmaData;
+
+        // Mostrar preview
+        document.getElementById('firma-preview-img').src = firmaData;
+        document.getElementById('firma-preview').style.display = 'block';
+
+        // Habilitar boton de completar
+        document.getElementById('btn-completar').disabled = false;
+        firmaCapturada = true;
+
+        // Cerrar modal
+        cerrarModalFirma();
+    }
+
+    // Validar antes de enviar
+    document.getElementById('form-firma').addEventListener('submit', function(e) {
+        if (!firmaCapturada) {
+            e.preventDefault();
+            alert('Por favor, capture la firma del cliente.');
             return false;
         }
-        
-        // Guardar firma como base64
-        document.getElementById('firma_data').value = signaturePad.toDataURL('image/png');
         return true;
+    });
+
+    // Manejar cambio de orientacion
+    window.addEventListener('resize', function() {
+        if (document.getElementById('firma-modal').classList.contains('active') && signaturePad) {
+            setTimeout(initSignaturePad, 100);
+        }
     });
 </script>
 {% endblock %}

@@ -1,0 +1,118 @@
+{% extends "superadmin/base_superadmin.html" %}
+
+{% block title %}Usuarios - SuperAdmin{% endblock %}
+
+{% block superadmin_content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people"></i> Usuarios del Sistema</h2>
+    <span class="badge bg-primary fs-6">{{ total_usuarios }} usuarios</span>
+</div>
+
+<!-- SuperAdmins -->
+{% if superadmins %}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-shield-lock"></i> SuperAdministradores</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in superadmins %}
+                <tr>
+                    <td><i class="bi bi-person-fill text-danger"></i> {{ u.nombre }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.activo %}
+                        <span class="badge bg-success">Activo</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Usuarios por Tenant -->
+{% for item in usuarios_por_tenant %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-building"></i> {{ item.tenant.nombre }}
+            <small class="text-muted">({{ item.tenant.plan.nombre }})</small>
+        </h5>
+        <div>
+            <span class="badge bg-info">{{ item.usuarios|length }} usuarios</span>
+            {% if item.tenant.activo %}
+            <span class="badge bg-success">Activo</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactivo</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in item.usuarios %}
+                <tr>
+                    <td>
+                        {% if u.rol == 'admin' %}
+                        <i class="bi bi-person-gear text-primary"></i>
+                        {% elif u.rol == 'tecnico' %}
+                        <i class="bi bi-person-badge text-success"></i>
+                        {% else %}
+                        <i class="bi bi-person text-secondary"></i>
+                        {% endif %}
+                        {{ u.nombre }}
+                    </td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.rol == 'admin' %}
+                        <span class="badge bg-primary">Admin</span>
+                        {% elif u.rol == 'tecnico' %}
+                        <span class="badge bg-success">Técnico</span>
+                        {% elif u.rol == 'cliente' %}
+                        <span class="badge bg-info">Cliente</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ u.rol }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.activo %}
+                        <span class="badge bg-success">Activo</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+
+{% if not usuarios_por_tenant and not superadmins %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No hay usuarios registrados en el sistema.
+</div>
+{% endif %}
+{% endblock %}

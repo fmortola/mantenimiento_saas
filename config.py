@@ -1,13 +1,15 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Cargar .env desde el directorio del proyecto
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'clave-secreta-cambiar-en-produccion'
 
-    # MariaDB - NUEVA BD para SaaS (NO usar servicio_tecnico que esta en produccion)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://mantenimiento_saas:password@10.5.1.115:3306/mantenimiento_saas'
+    # MariaDB - Base de datos SaaS
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:ids12345%24@10.5.1.115:3306/servicio_tecnico'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'static', 'images', 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max

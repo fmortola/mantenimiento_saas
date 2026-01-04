@@ -52,6 +52,37 @@ def dashboard():
                            planes=planes)
 
 
+# ==================== USUARIOS (GLOBAL) ====================
+@superadmin_bp.route('/usuarios')
+@login_required
+@superadmin_required
+def usuarios():
+    """Lista global de usuarios agrupados por tenant"""
+    # Obtener todos los tenants con sus usuarios
+    tenants = Tenant.query.order_by(Tenant.nombre).all()
+
+    # Organizar usuarios por tenant
+    usuarios_por_tenant = []
+    for tenant in tenants:
+        usuarios = Usuario.query.filter_by(tenant_id=tenant.id).order_by(Usuario.rol, Usuario.nombre).all()
+        if usuarios:
+            usuarios_por_tenant.append({
+                'tenant': tenant,
+                'usuarios': usuarios
+            })
+
+    # SuperAdmin (sin tenant)
+    superadmins = Usuario.query.filter_by(rol='superadmin').all()
+
+    # Totales
+    total_usuarios = Usuario.query.count()
+
+    return render_template('superadmin/usuarios/lista.html',
+                           usuarios_por_tenant=usuarios_por_tenant,
+                           superadmins=superadmins,
+                           total_usuarios=total_usuarios)
+
+
 # ==================== TENANTS ====================
 @superadmin_bp.route('/tenants')
 @login_required

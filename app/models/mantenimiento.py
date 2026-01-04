@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 
 class Mantenimiento(db.Model):
     """Mantenimiento programado para un cliente/ubicación - puede incluir múltiples equipos"""
@@ -19,7 +20,7 @@ class Mantenimiento(db.Model):
     notas_cierre = db.Column(db.Text)
 
     # Firma del cliente al completar mantenimiento
-    firma_cliente = db.Column(db.Text)  # Base64 de la firma
+    firma_cliente = db.Column(MEDIUMTEXT)  # Base64 de la firma (hasta 16MB)
     firma_nombre = db.Column(db.String(100))  # Nombre de quien firma
     firma_fecha = db.Column(db.DateTime)  # Fecha/hora de la firma
 

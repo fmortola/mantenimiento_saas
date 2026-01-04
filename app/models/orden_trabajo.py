@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 
 # Tabla de asociación para técnicos asignados a órdenes de trabajo
 tecnicos_orden = db.Table('tecnicos_orden',
@@ -31,7 +32,7 @@ class OrdenTrabajo(db.Model):
     cliente_rapido_direccion = db.Column(db.String(300))
 
     # Firma del cliente al completar trabajo
-    firma_cliente = db.Column(db.Text)  # Base64 de la firma
+    firma_cliente = db.Column(MEDIUMTEXT)  # Base64 de la firma (hasta 16MB)
     firma_nombre = db.Column(db.String(100))  # Nombre de quien firma
     firma_fecha = db.Column(db.DateTime)  # Fecha/hora de la firma
 

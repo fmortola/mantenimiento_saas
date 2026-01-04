@@ -149,7 +149,89 @@ def generar_pdf_orden(orden):
         if orden.fecha_fin:
             elements.append(Paragraph(f"Fecha de finalizacion: {orden.fecha_fin.strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
 
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 20))
+
+    # Fotos del trabajo
+    fotos = orden.fotos.all()
+    if fotos:
+        elements.append(Paragraph("FOTOS DEL TRABAJO", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+
+        fotos_por_tipo = {'antes': [], 'durante': [], 'despues': [], 'otro': []}
+        for foto in fotos:
+            tipo = foto.tipo or 'otro'
+            if tipo in fotos_por_tipo:
+                fotos_por_tipo[tipo].append(foto)
+            else:
+                fotos_por_tipo['otro'].append(foto)
+
+        for tipo, fotos_lista in fotos_por_tipo.items():
+            if fotos_lista:
+                tipo_label = {'antes': 'Antes', 'durante': 'Durante', 'despues': 'Después', 'otro': 'Otras'}.get(tipo, tipo)
+                elements.append(Paragraph(f"<b>{tipo_label}:</b>", styles['Normal']))
+                elements.append(Spacer(1, 5))
+
+                # Crear grid de fotos (3 por fila)
+                foto_row = []
+                for foto in fotos_lista:
+                    try:
+                        foto_path = os.path.join(current_app.config['UPLOAD_FOLDER'], foto.ruta)
+                        if os.path.exists(foto_path):
+                            # Obtener dimensiones respetando EXIF orientation
+                            from PIL import Image as PILImage
+                            from PIL import ImageOps
+
+                            with PILImage.open(foto_path) as pil_img:
+                                # Aplicar rotación EXIF si existe
+                                pil_img = ImageOps.exif_transpose(pil_img)
+                                orig_w, orig_h = pil_img.size
+
+                                # Guardar en memoria
+                                img_buffer = io.BytesIO()
+                                pil_img.save(img_buffer, 'JPEG', quality=85)
+                                img_buffer.seek(0)
+
+                            # Tamaño máximo en el PDF
+                            max_w = 1.8 * inch
+                            max_h = 2.2 * inch
+
+                            # Calcular escala manteniendo proporción
+                            scale = min(max_w / orig_w, max_h / orig_h)
+                            new_w = orig_w * scale
+                            new_h = orig_h * scale
+
+                            img = Image(img_buffer, width=new_w, height=new_h)
+                            foto_row.append(img)
+
+                            # Si tenemos 3 fotos, crear fila y resetear
+                            if len(foto_row) == 3:
+                                foto_table = Table([foto_row], colWidths=[2*inch, 2*inch, 2*inch])
+                                foto_table.setStyle(TableStyle([
+                                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                                ]))
+                                elements.append(foto_table)
+                                foto_row = []
+                    except Exception as e:
+                        pass
+
+                # Fotos restantes
+                if foto_row:
+                    # Rellenar con celdas vacías
+                    while len(foto_row) < 3:
+                        foto_row.append('')
+                    foto_table = Table([foto_row], colWidths=[2*inch, 2*inch, 2*inch])
+                    foto_table.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                    ]))
+                    elements.append(foto_table)
+
+                elements.append(Spacer(1, 10))
+
+    elements.append(Spacer(1, 20))
 
     # Firma del cliente (digital si existe)
     if orden.firma_cliente:

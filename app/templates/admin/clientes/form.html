@@ -46,6 +46,16 @@
                     <label class="form-label">Notas</label>
                     <textarea class="form-control" name="notas" rows="3">{{ cliente.notas if cliente else '' }}</textarea>
                 </div>
+
+                <div class="col-12">
+                    <hr>
+                    <h6 class="text-muted"><i class="bi bi-envelope-paper"></i> Reportes Mensuales</h6>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email para Reportes Mensuales</label>
+                    <input type="email" class="form-control" name="email_reportes" value="{{ cliente.email_reportes if cliente else '' }}" placeholder="Dejar vacío para no enviar reportes">
+                    <small class="text-muted">Si se configura, el cliente recibirá un reporte mensual con todos los servicios realizados.</small>
+                </div>
             </div>
 
             <div class="mt-4">

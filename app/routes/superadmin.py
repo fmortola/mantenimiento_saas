@@ -140,6 +140,7 @@ def tenant_nuevo():
             telefono=request.form.get('telefono', '').strip(),
             plan_id=request.form.get('plan_id', type=int),
             fecha_vencimiento=fecha_vencimiento,
+            dia_envio_reportes=request.form.get('dia_envio_reportes', 28, type=int),
             activo=True
         )
 
@@ -210,6 +211,7 @@ def tenant_editar(id):
         tenant.telefono = request.form.get('telefono', '').strip()
         tenant.plan_id = request.form.get('plan_id', type=int)
         tenant.activo = 'activo' in request.form
+        tenant.dia_envio_reportes = request.form.get('dia_envio_reportes', 28, type=int)
 
         if request.form.get('fecha_vencimiento'):
             tenant.fecha_vencimiento = datetime.strptime(

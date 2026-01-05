@@ -20,6 +20,9 @@ class Tenant(db.Model):
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_vencimiento = db.Column(db.DateTime)
 
+    # Configuración de reportes mensuales
+    dia_envio_reportes = db.Column(db.Integer, default=28)  # Día del mes para enviar reportes (1-28)
+
     # Plan
     plan_id = db.Column(db.Integer, db.ForeignKey('plan.id'), nullable=False)
 

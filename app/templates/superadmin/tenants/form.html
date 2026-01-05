@@ -70,6 +70,23 @@
                 {% endif %}
             </div>
 
+            <!-- Configuracion de Reportes -->
+            <hr>
+            <h5 class="mb-3"><i class="bi bi-envelope-paper"></i> Reportes Mensuales</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Día de envío de reportes</label>
+                    <select name="dia_envio_reportes" class="form-select">
+                        {% for dia in range(1, 29) %}
+                        <option value="{{ dia }}" {{ 'selected' if tenant and tenant.dia_envio_reportes == dia else ('selected' if not tenant and dia == 28) }}>
+                            Día {{ dia }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Los clientes con email configurado recibirán el reporte mensual este día.</small>
+                </div>
+            </div>
+
             <!-- Usuario Admin (solo para nuevo) -->
             {% if not tenant %}
             <hr>

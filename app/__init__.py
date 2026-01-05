@@ -57,4 +57,8 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
 
+    # Registrar comandos CLI
+    import commands
+    commands.init_app(app)
+
     return app

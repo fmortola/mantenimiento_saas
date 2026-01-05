@@ -11,6 +11,7 @@ class Cliente(db.Model):
     telefono_principal = db.Column(db.String(20))
     telefono_secundario = db.Column(db.String(20))
     persona_contacto = db.Column(db.String(100))
+    email_reportes = db.Column(db.String(120))  # Email para envío de reportes mensuales
     notas = db.Column(db.Text)
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)

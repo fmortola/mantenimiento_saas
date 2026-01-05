@@ -120,6 +120,7 @@ def cliente_nuevo():
             telefono_principal=request.form.get('telefono_principal'),
             telefono_secundario=request.form.get('telefono_secundario'),
             persona_contacto=request.form.get('persona_contacto'),
+            email_reportes=request.form.get('email_reportes'),
             notas=request.form.get('notas'),
             tenant_id=get_tenant_id()
         )
@@ -150,6 +151,7 @@ def cliente_editar(id):
         cliente.telefono_principal = request.form.get('telefono_principal')
         cliente.telefono_secundario = request.form.get('telefono_secundario')
         cliente.persona_contacto = request.form.get('persona_contacto')
+        cliente.email_reportes = request.form.get('email_reportes')
         cliente.notas = request.form.get('notas')
         db.session.commit()
         flash('Cliente actualizado exitosamente.', 'success')

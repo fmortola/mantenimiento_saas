@@ -18,6 +18,7 @@ class Cliente(db.Model):
 
     # Tenant (multi-tenancy)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
+    tenant = db.relationship('Tenant', backref='clientes')
 
     # Relaciones
     ubicaciones = db.relationship('Ubicacion', backref='cliente', lazy='dynamic', cascade='all, delete-orphan')

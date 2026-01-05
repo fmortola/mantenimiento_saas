@@ -57,8 +57,11 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
 
-    # Registrar comandos CLI
-    import commands
-    commands.init_app(app)
+    # Registrar comandos CLI (opcional)
+    try:
+        import commands
+        commands.init_app(app)
+    except ImportError:
+        pass  # Comandos no disponibles si no existe el archivo
 
     return app

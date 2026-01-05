@@ -2,6 +2,7 @@
 Comandos CLI para tareas programadas (cron)
 """
 import click
+from datetime import timedelta
 from flask.cli import with_appcontext
 
 
@@ -24,9 +25,11 @@ def enviar_reportes_command():
 
 @click.command('test-reporte')
 @click.argument('cliente_id', type=int)
+@click.option('--mes-actual', is_flag=True, help='Usar el mes actual en vez del mes anterior')
 @with_appcontext
-def test_reporte_command(cliente_id):
+def test_reporte_command(cliente_id, mes_actual):
     """Genera un reporte de prueba para un cliente específico"""
+    from datetime import datetime
     from app.models.cliente import Cliente
     from app.services.reportes_mensuales import (
         obtener_rango_mes_anterior,
@@ -42,7 +45,19 @@ def test_reporte_command(cliente_id):
 
     click.echo(f'Generando reporte para: {cliente.nombre}')
 
-    fecha_inicio, fecha_fin = obtener_rango_mes_anterior()
+    if mes_actual:
+        # Usar mes actual para pruebas
+        hoy = datetime.now()
+        fecha_inicio = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Último día del mes actual
+        if hoy.month == 12:
+            fecha_fin = hoy.replace(year=hoy.year+1, month=1, day=1) - timedelta(days=1)
+        else:
+            fecha_fin = hoy.replace(month=hoy.month+1, day=1) - timedelta(days=1)
+        fecha_fin = fecha_fin.replace(hour=23, minute=59, second=59)
+    else:
+        fecha_inicio, fecha_fin = obtener_rango_mes_anterior()
+
     click.echo(f'Período: {fecha_inicio.strftime("%d/%m/%Y")} - {fecha_fin.strftime("%d/%m/%Y")}')
 
     actividad = obtener_actividad_cliente(cliente, fecha_inicio, fecha_fin)

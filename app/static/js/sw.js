@@ -1,5 +1,7 @@
 // Service Worker para PWA
-const CACHE_NAME = 'servicio-tecnico-v1';
+// IMPORTANTE: Incrementar VERSION cuando se hagan cambios para forzar actualización
+const VERSION = '1.0.1';
+const CACHE_NAME = `servicio-tecnico-v${VERSION}`;
 const urlsToCache = [
     '/',
     '/static/css/style.css',
@@ -8,29 +10,45 @@ const urlsToCache = [
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css'
 ];
 
-// Instalación
+// Instalación - se activa inmediatamente
 self.addEventListener('install', event => {
+    console.log(`[SW] Instalando versión ${VERSION}`);
+    self.skipWaiting(); // Forzar activación inmediata
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Cache abierto');
+                console.log('[SW] Cache abierto');
                 return cache.addAll(urlsToCache);
             })
     );
 });
 
-// Activación
+// Activación - limpiar caches antiguos y notificar clientes
 self.addEventListener('activate', event => {
+    console.log(`[SW] Activando versión ${VERSION}`);
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('Eliminando cache antiguo:', cacheName);
+                        console.log('[SW] Eliminando cache antiguo:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
+        }).then(() => {
+            // Tomar control de todos los clientes inmediatamente
+            return self.clients.claim();
+        }).then(() => {
+            // Notificar a todos los clientes que hay una nueva versión
+            return self.clients.matchAll().then(clients => {
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'SW_UPDATED',
+                        version: VERSION
+                    });
+                });
+            });
         })
     );
 });
@@ -75,9 +93,20 @@ self.addEventListener('fetch', event => {
     );
 });
 
+// Mensaje desde el cliente (para obtener versión)
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'GET_VERSION') {
+        event.ports[0].postMessage({ version: VERSION });
+    }
+
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 // Push Notifications
 self.addEventListener('push', event => {
-    console.log('Push recibido:', event);
+    console.log('[SW] Push recibido:', event);
 
     let data = {};
     if (event.data) {
@@ -88,7 +117,7 @@ self.addEventListener('push', event => {
     const options = {
         body: data.body || 'Nueva notificación',
         icon: '/static/images/icon-192.png',
-        badge: '/static/images/badge-72.png',
+        badge: '/static/images/icon-72.png',
         vibrate: [100, 50, 100],
         data: {
             url: data.url || '/'

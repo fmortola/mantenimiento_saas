@@ -64,6 +64,7 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key"></i> Cambiar Contraseña</a></li>
                         <li><a class="dropdown-item" href="#" onclick="activarNotificaciones(); return false;"><i class="bi bi-bell"></i> Activar Notificaciones</a></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#infoAppModal"><i class="bi bi-info-circle"></i> Acerca de</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a></li>
                     </ul>
@@ -151,8 +152,63 @@
         </div>
     </div>
 
+    <!-- Banner de actualización disponible -->
+    <div id="update-banner" class="alert alert-success alert-dismissible position-fixed top-0 start-0 end-0 m-0 rounded-0 shadow" style="display: none; z-index: 1060; margin-top: 56px !important;">
+        <div class="container d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-arrow-repeat"></i> Nueva versión disponible</span>
+            <button type="button" class="btn btn-success btn-sm ms-2" onclick="actualizarApp()">
+                <i class="bi bi-download"></i> Actualizar
+            </button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Modal Acerca de la App -->
+    <div class="modal fade" id="infoAppModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-info-circle"></i> Acerca de ServTec</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="{{ url_for('static', filename='images/icon-192.png') }}" alt="ServTec" style="width: 80px; height: 80px;" class="mb-3">
+                    <h4>ServTec</h4>
+                    <p class="text-muted mb-1">Sistema de Gestion de Servicio Tecnico</p>
+                    <p class="mb-3"><span class="badge bg-secondary" id="app-version">v1.0.0</span></p>
+
+                    <hr>
+
+                    <div class="text-start">
+                        <p class="mb-2"><strong><i class="bi bi-code-slash"></i> Desarrollado por:</strong></p>
+                        <p class="mb-3 ms-3">IDS - Soluciones Tecnologicas</p>
+
+                        <p class="mb-2"><strong><i class="bi bi-headset"></i> Soporte Tecnico:</strong></p>
+                        <p class="mb-1 ms-3">
+                            <a href="tel:+593999999999" class="text-decoration-none">
+                                <i class="bi bi-telephone"></i> +593 99 999 9999
+                            </a>
+                        </p>
+                        <p class="mb-3 ms-3">
+                            <a href="mailto:soporte@ids.com.ec" class="text-decoration-none">
+                                <i class="bi bi-envelope"></i> soporte@ids.com.ec
+                            </a>
+                        </p>
+
+                        <p class="mb-2"><strong><i class="bi bi-clock-history"></i> Horario de atencion:</strong></p>
+                        <p class="mb-0 ms-3">Lunes a Viernes: 8:00 - 18:00</p>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <small class="text-muted">&copy; 2024 - Todos los derechos reservados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let swRegistration = null;
+        let appVersion = '1.0.1'; // Debe coincidir con sw.js
 
         // Registrar Service Worker
         if ('serviceWorker' in navigator) {
@@ -161,8 +217,58 @@
                     console.log('Service Worker registrado');
                     swRegistration = reg;
                     verificarPermisoNotificaciones();
+                    obtenerVersionApp();
+
+                    // Verificar actualizaciones periódicamente
+                    setInterval(() => {
+                        reg.update();
+                    }, 60000); // Cada minuto
                 })
                 .catch(err => console.log('Error SW:', err));
+
+            // Escuchar mensajes del Service Worker
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data && event.data.type === 'SW_UPDATED') {
+                    console.log('Nueva versión disponible:', event.data.version);
+                    mostrarBannerActualizacion();
+                }
+            });
+        }
+
+        // Obtener versión de la app desde el SW
+        function obtenerVersionApp() {
+            if (navigator.serviceWorker.controller) {
+                const messageChannel = new MessageChannel();
+                messageChannel.port1.onmessage = (event) => {
+                    if (event.data.version) {
+                        appVersion = event.data.version;
+                        const versionBadge = document.getElementById('app-version');
+                        if (versionBadge) {
+                            versionBadge.textContent = 'v' + appVersion;
+                        }
+                    }
+                };
+                navigator.serviceWorker.controller.postMessage(
+                    { type: 'GET_VERSION' },
+                    [messageChannel.port2]
+                );
+            }
+        }
+
+        // Mostrar banner de actualización
+        function mostrarBannerActualizacion() {
+            const banner = document.getElementById('update-banner');
+            if (banner) {
+                banner.style.display = 'block';
+            }
+        }
+
+        // Actualizar la app (recargar)
+        function actualizarApp() {
+            if (swRegistration && swRegistration.waiting) {
+                swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+            window.location.reload(true);
         }
 
         // ========== PWA INSTALLATION ==========

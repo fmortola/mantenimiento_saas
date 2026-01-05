@@ -256,12 +256,22 @@
             document.getElementById('firma-modal').classList.add('active');
             document.body.style.overflow = 'hidden';
 
+            // Intentar rotar a landscape
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(e => console.log('No se pudo rotar:', e));
+            }
+
             setTimeout(initSignaturePad, 100);
         }
 
         function cerrarModalFirma() {
             document.getElementById('firma-modal').classList.remove('active');
             document.body.style.overflow = '';
+
+            // Restaurar orientación
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
         }
 
         function limpiarFirma() {

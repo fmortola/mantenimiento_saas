@@ -35,6 +35,7 @@ def create_app(config_class=Config):
     from app.routes.cliente import cliente_bp
     from app.routes.api import api_bp
     from app.routes.superadmin import superadmin_bp
+    from app.routes.firma_publica import firma_publica_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -42,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(cliente_bp, url_prefix='/cliente')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
+    app.register_blueprint(firma_publica_bp)  # Rutas públicas sin prefix
 
     # Importar todos los modelos para que SQLAlchemy los conozca
     from app.models import (

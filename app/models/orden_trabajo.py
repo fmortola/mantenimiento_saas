@@ -35,6 +35,8 @@ class OrdenTrabajo(db.Model):
     firma_cliente = db.Column(MEDIUMTEXT)  # Base64 de la firma (hasta 16MB)
     firma_nombre = db.Column(db.String(100))  # Nombre de quien firma
     firma_fecha = db.Column(db.DateTime)  # Fecha/hora de la firma
+    firma_token = db.Column(db.String(64), unique=True)  # Token para firma remota
+    firma_estado = db.Column(db.String(20), default='sin_firma')  # sin_firma, pendiente, firmado
 
     # Tenant (multi-tenancy)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=False)
@@ -106,6 +108,13 @@ ESTADOS_ORDEN = [
     ('pendiente', 'Pendiente'),
     ('asignado', 'Asignado'),
     ('en_progreso', 'En Progreso'),
+    ('pendiente_firma', 'Pendiente de Firma'),
     ('completado', 'Completado'),
     ('cancelado', 'Cancelado')
+]
+
+ESTADOS_FIRMA = [
+    ('sin_firma', 'Sin Firma'),
+    ('pendiente', 'Pendiente'),
+    ('firmado', 'Firmado')
 ]

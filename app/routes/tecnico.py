@@ -627,3 +627,101 @@ def orden_completar_con_firma(id):
 
     flash('Orden completada exitosamente con firma del cliente.', 'success')
     return redirect(url_for('tecnico.ordenes'))
+
+
+@tecnico_bp.route('/ordenes/<int:id>/completar-flexible', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_completar_flexible(id):
+    """Completa la orden con opciones: firma presencial, remota o sin firma"""
+    import secrets
+    from app.services.notificaciones import notificar_cliente
+
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        return jsonify({'error': 'No tienes acceso a esta orden'}), 403
+
+    data = request.get_json()
+    opcion = data.get('opcion')
+    descripcion_trabajo = data.get('descripcion_trabajo')
+
+    if not opcion:
+        return jsonify({'error': 'Seleccione una opcion'}), 400
+
+    # Guardar descripcion del trabajo
+    if descripcion_trabajo:
+        orden.descripcion_trabajo = descripcion_trabajo
+
+    orden.fecha_fin = datetime.utcnow()
+
+    if opcion == 'presencial':
+        # Firma presencial
+        firma_data = data.get('firma_data')
+        firma_nombre = data.get('firma_nombre')
+
+        if not firma_data or not firma_nombre:
+            return jsonify({'error': 'Falta la firma del cliente'}), 400
+
+        orden.firma_cliente = firma_data
+        orden.firma_nombre = firma_nombre
+        orden.firma_fecha = datetime.utcnow()
+        orden.firma_estado = 'firmado'
+        orden.estado = 'completado'
+
+        mensaje_flash = 'Orden completada con firma del cliente.'
+        titulo_notif = 'Orden Completada con Firma'
+
+    elif opcion == 'remota':
+        # Firma remota - generar token y enviar notificacion
+        if not orden.cliente:
+            return jsonify({'error': 'No se puede solicitar firma remota sin cliente registrado'}), 400
+
+        # Generar token unico
+        orden.firma_token = secrets.token_urlsafe(32)
+        orden.firma_estado = 'pendiente'
+        orden.estado = 'pendiente_firma'
+
+        db.session.commit()
+
+        # URL para firmar
+        firma_url = url_for('firma_publica.firmar_orden', token=orden.firma_token, _external=True)
+
+        # Notificar al cliente
+        notificar_cliente(
+            orden.cliente,
+            'Firma Requerida',
+            f'El trabajo {orden.numero} ha sido completado. Por favor firme para confirmar.',
+            firma_url
+        )
+
+        # Notificar admin
+        notificar_admins(
+            'Orden Pendiente de Firma',
+            f'El tecnico {current_user.nombre} ha solicitado firma remota para la orden {orden.numero}',
+            url_for('admin.orden_ver', id=orden.id),
+            tenant_id=current_user.tenant_id
+        )
+
+        flash('Se ha enviado solicitud de firma al cliente.', 'info')
+        return jsonify({'success': True, 'message': 'Solicitud de firma enviada'})
+
+    else:
+        # Sin firma
+        orden.firma_estado = 'sin_firma'
+        orden.estado = 'completado'
+
+        mensaje_flash = 'Orden completada sin firma.'
+        titulo_notif = 'Orden Completada'
+
+    db.session.commit()
+
+    # Notificar a administradores
+    notificar_admins(
+        titulo_notif,
+        f'El tecnico {current_user.nombre} ha completado la orden {orden.numero}',
+        url_for('admin.orden_ver', id=orden.id),
+        tenant_id=current_user.tenant_id
+    )
+
+    flash(mensaje_flash, 'success')
+    return jsonify({'success': True, 'message': mensaje_flash})

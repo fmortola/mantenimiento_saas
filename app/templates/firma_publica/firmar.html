@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <title>Firmar {{ tipo|capitalize }} {{ item.numero }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .firma-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 9999;
+        }
+        .firma-modal.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .firma-modal-header {
+            padding: 10px 15px;
+            background: #0d6efd;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .firma-modal-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+        .firma-canvas-container {
+            flex: 1;
+            position: relative;
+            background: #fff;
+            border: 3px solid #dee2e6;
+            margin: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #signature-pad {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        .firma-modal-footer {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 10px;
+        }
+        .firma-modal-footer .btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 1.1rem;
+        }
+        .firma-line {
+            position: absolute;
+            bottom: 60px;
+            left: 30px;
+            right: 30px;
+            border-bottom: 1px solid #ccc;
+        }
+        .firma-label {
+            position: absolute;
+            bottom: 35px;
+            left: 30px;
+            color: #999;
+            font-size: 14px;
+        }
+        .success-animation {
+            animation: scaleIn 0.5s ease-out;
+        }
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <!-- Logo/Header -->
+                <div class="text-center text-white mb-4">
+                    <i class="bi bi-tools fs-1"></i>
+                    <h4>ServTec</h4>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-4">
+                        <div class="text-center mb-4">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
+                                <i class="bi bi-pen text-primary fs-2"></i>
+                            </div>
+                            <h5>Firma de Conformidad</h5>
+                            <p class="text-muted mb-0">{{ tipo|capitalize }} #{{ item.numero }}</p>
+                        </div>
+
+                        <!-- Resumen del trabajo -->
+                        <div class="bg-light rounded p-3 mb-4">
+                            <h6 class="mb-3"><i class="bi bi-clipboard-check"></i> Resumen</h6>
+
+                            {% if tipo == 'orden' %}
+                            <p class="mb-2">
+                                <strong>Cliente:</strong>
+                                {% if item.cliente %}{{ item.cliente.nombre }}{% else %}{{ item.cliente_rapido_nombre }}{% endif %}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Tipo:</strong> {{ item.tipo }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Solicitud:</strong> {{ item.descripcion_solicitud[:150] }}{% if item.descripcion_solicitud|length > 150 %}...{% endif %}
+                            </p>
+                            {% if item.descripcion_trabajo %}
+                            <p class="mb-0">
+                                <strong>Trabajo realizado:</strong> {{ item.descripcion_trabajo[:150] }}{% if item.descripcion_trabajo|length > 150 %}...{% endif %}
+                            </p>
+                            {% endif %}
+                            {% else %}
+                            <p class="mb-2">
+                                <strong>Cliente:</strong> {{ item.cliente.nombre }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Ubicacion:</strong> {{ item.ubicacion.nombre }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Tipo:</strong> {{ item.tipo }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Titulo:</strong> {{ item.titulo }}
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Formulario de firma -->
+                        <div id="form-section">
+                            <div class="mb-3">
+                                <label class="form-label">Nombre de quien firma *</label>
+                                <input type="text" class="form-control form-control-lg" id="firma_nombre"
+                                       placeholder="Nombre completo" required>
+                            </div>
+
+                            <!-- Preview de firma -->
+                            <div id="firma-preview" class="mb-3 text-center" style="display: none;">
+                                <p class="text-success mb-2"><i class="bi bi-check-circle"></i> Firma capturada</p>
+                                <img id="firma-preview-img" style="max-height: 100px; border: 1px solid #ddd; border-radius: 5px;">
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-primary btn-lg" onclick="abrirModalFirma()">
+                                    <i class="bi bi-pen"></i> Firmar
+                                </button>
+                            </div>
+
+                            <input type="hidden" id="firma_data">
+                        </div>
+
+                        <!-- Mensaje de exito -->
+                        <div id="success-section" style="display: none;">
+                            <div class="text-center py-4">
+                                <div class="success-animation">
+                                    <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                                </div>
+                                <h4 class="mt-3">Firma Registrada</h4>
+                                <p class="text-muted">Gracias por confirmar el trabajo realizado.</p>
+                                <p class="small text-muted">Puede cerrar esta ventana.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-center text-white-50 mt-3 small">
+                    &copy; {{ now().year if now is defined else '2024' }} ServTec - Sistema de Gestion
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Fullscreen para Firma -->
+    <div id="firma-modal" class="firma-modal">
+        <div class="firma-modal-header">
+            <span><i class="bi bi-pen"></i> Firme aqui</span>
+            <button type="button" class="btn btn-light btn-sm" onclick="cerrarModalFirma()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="firma-modal-body">
+            <div class="firma-canvas-container">
+                <canvas id="signature-pad"></canvas>
+                <div class="firma-line"></div>
+                <div class="firma-label">Firma aqui</div>
+            </div>
+        </div>
+        <div class="firma-modal-footer">
+            <button type="button" class="btn btn-outline-danger" onclick="limpiarFirma()">
+                <i class="bi bi-eraser"></i> Limpiar
+            </button>
+            <button type="button" class="btn btn-success" onclick="confirmarFirma()">
+                <i class="bi bi-check-lg"></i> Confirmar
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script>
+        let signaturePad;
+        const token = '{{ token }}';
+        const tipo = '{{ tipo }}';
+
+        function initSignaturePad() {
+            const canvas = document.getElementById('signature-pad');
+            const container = canvas.parentElement;
+
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = container.offsetWidth * ratio;
+            canvas.height = container.offsetHeight * ratio;
+            canvas.style.width = container.offsetWidth + 'px';
+            canvas.style.height = container.offsetHeight + 'px';
+            canvas.getContext('2d').scale(ratio, ratio);
+
+            signaturePad = new SignaturePad(canvas, {
+                backgroundColor: 'rgb(255, 255, 255)',
+                penColor: 'rgb(0, 0, 100)',
+                minWidth: 1.5,
+                maxWidth: 4
+            });
+        }
+
+        function abrirModalFirma() {
+            const nombre = document.getElementById('firma_nombre').value.trim();
+            if (!nombre) {
+                alert('Por favor ingrese su nombre primero.');
+                document.getElementById('firma_nombre').focus();
+                return;
+            }
+
+            document.getElementById('firma-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            setTimeout(initSignaturePad, 100);
+        }
+
+        function cerrarModalFirma() {
+            document.getElementById('firma-modal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function limpiarFirma() {
+            if (signaturePad) {
+                signaturePad.clear();
+            }
+        }
+
+        function confirmarFirma() {
+            if (signaturePad.isEmpty()) {
+                alert('Por favor, firme en el area indicada.');
+                return;
+            }
+
+            const firmaData = signaturePad.toDataURL('image/png');
+            document.getElementById('firma_data').value = firmaData;
+            document.getElementById('firma-preview-img').src = firmaData;
+            document.getElementById('firma-preview').style.display = 'block';
+
+            cerrarModalFirma();
+
+            // Enviar firma al servidor
+            enviarFirma();
+        }
+
+        async function enviarFirma() {
+            const firmaData = document.getElementById('firma_data').value;
+            const firmaNombre = document.getElementById('firma_nombre').value;
+
+            const btn = document.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+
+            try {
+                const response = await fetch(`/firmar/${tipo}/${token}/guardar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firma_data: firmaData,
+                        firma_nombre: firmaNombre
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('form-section').style.display = 'none';
+                    document.getElementById('success-section').style.display = 'block';
+                } else {
+                    alert(data.error || 'Error al guardar la firma');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-pen"></i> Firmar';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexion. Intente nuevamente.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-pen"></i> Firmar';
+            }
+        }
+
+        window.addEventListener('resize', function() {
+            if (document.getElementById('firma-modal').classList.contains('active') && signaturePad) {
+                setTimeout(initSignaturePad, 100);
+            }
+        });
+    </script>
+</body>
+</html>

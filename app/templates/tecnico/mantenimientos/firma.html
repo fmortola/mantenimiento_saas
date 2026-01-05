@@ -1,0 +1,430 @@
+{% extends "tecnico/base_tecnico.html" %}
+
+{% block title %}Completar - Mantenimiento {{ mantenimiento.numero }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signature-info {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+        border-radius: 10px;
+    }
+    .option-card {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .option-card:hover {
+        border-color: #0d6efd;
+        background: #f8f9fa;
+    }
+    .option-card.selected {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+    }
+    .firma-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        z-index: 9999;
+    }
+    .firma-modal.active {
+        display: flex;
+        flex-direction: column;
+    }
+    .firma-modal-header {
+        padding: 10px 15px;
+        background: #0d6efd;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .firma-modal-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+    }
+    .firma-canvas-container {
+        flex: 1;
+        position: relative;
+        background: #fff;
+        border: 3px solid #dee2e6;
+        margin: 10px;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #signature-pad {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+    }
+    .firma-modal-footer {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        display: flex;
+        gap: 10px;
+    }
+    .firma-modal-footer .btn {
+        flex: 1;
+        padding: 15px;
+        font-size: 1.1rem;
+    }
+    @media screen and (orientation: portrait) {
+        .firma-modal-body .rotate-hint {
+            display: block;
+            text-align: center;
+            padding: 10px;
+            background: #fff3cd;
+            color: #856404;
+        }
+    }
+    @media screen and (orientation: landscape) {
+        .firma-modal-body .rotate-hint {
+            display: none;
+        }
+    }
+    .firma-line {
+        position: absolute;
+        bottom: 60px;
+        left: 30px;
+        right: 30px;
+        border-bottom: 1px solid #ccc;
+    }
+    .firma-label {
+        position: absolute;
+        bottom: 35px;
+        left: 30px;
+        color: #999;
+        font-size: 14px;
+    }
+    .equipo-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .equipo-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block tecnico_content %}
+<a href="{{ url_for('tecnico.mantenimiento_ver', id=mantenimiento.id) }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+
+<div class="text-center mb-4">
+    <h4><i class="bi bi-check-circle"></i> Completar Mantenimiento</h4>
+    <p class="text-muted">{{ mantenimiento.numero }}</p>
+</div>
+
+<!-- Resumen del mantenimiento -->
+<div class="card mb-4 signature-info">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-clipboard-check"></i> Resumen del Mantenimiento</h6>
+        <p class="mb-2">
+            <strong>Cliente:</strong> {{ mantenimiento.cliente.nombre }}
+        </p>
+        <p class="mb-2">
+            <strong>Ubicacion:</strong> {{ mantenimiento.ubicacion.nombre }}
+        </p>
+        <p class="mb-2">
+            <strong>Tipo:</strong> {{ mantenimiento.tipo }}
+        </p>
+        <p class="mb-3">
+            <strong>Titulo:</strong> {{ mantenimiento.titulo }}
+        </p>
+
+        <!-- Resumen de equipos -->
+        <div class="bg-white rounded p-2">
+            <small class="text-muted d-block mb-2">
+                <strong>Equipos atendidos:</strong> {{ equipos_completados }}/{{ total_equipos }}
+            </small>
+            {% for me in mantenimiento.equipos_mantenimiento %}
+            <div class="equipo-item d-flex justify-content-between align-items-center">
+                <small>{{ me.equipo.nombre or me.equipo.tipo }}</small>
+                <span class="badge bg-{{ 'success' if me.estado == 'completado' else 'warning' }} badge-sm">
+                    {{ me.estado }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Observaciones generales -->
+<div class="card mb-4">
+    <div class="card-body">
+        <label class="form-label"><strong>Observaciones generales del mantenimiento</strong></label>
+        <textarea class="form-control" id="observaciones_generales" rows="3" placeholder="Observaciones adicionales sobre el mantenimiento realizado...">{{ mantenimiento.observaciones or '' }}</textarea>
+    </div>
+</div>
+
+<!-- Opciones de firma -->
+<h6 class="mb-3"><i class="bi bi-pen"></i> Firma del Responsable</h6>
+
+<div class="row g-3 mb-4">
+    <!-- Opcion 1: Firma presencial -->
+    <div class="col-12">
+        <div class="option-card p-3" onclick="seleccionarOpcion('presencial')">
+            <div class="d-flex align-items-center">
+                <div class="text-primary me-3">
+                    <i class="bi bi-pen fs-2"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Obtener firma ahora</h6>
+                    <small class="text-muted">El responsable del area firma en este dispositivo</small>
+                </div>
+                <input type="radio" name="opcion_firma" value="presencial" class="form-check-input" id="opt-presencial">
+            </div>
+        </div>
+    </div>
+
+    <!-- Opcion 2: Firma remota -->
+    <div class="col-12">
+        <div class="option-card p-3" onclick="seleccionarOpcion('remota')">
+            <div class="d-flex align-items-center">
+                <div class="text-info me-3">
+                    <i class="bi bi-send fs-2"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Solicitar firma remota</h6>
+                    <small class="text-muted">Se enviara notificacion al cliente para que firme desde su dispositivo</small>
+                </div>
+                <input type="radio" name="opcion_firma" value="remota" class="form-check-input" id="opt-remota">
+            </div>
+        </div>
+    </div>
+
+    <!-- Opcion 3: Sin firma -->
+    <div class="col-12">
+        <div class="option-card p-3" onclick="seleccionarOpcion('sin_firma')">
+            <div class="d-flex align-items-center">
+                <div class="text-secondary me-3">
+                    <i class="bi bi-x-circle fs-2"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Completar sin firma</h6>
+                    <small class="text-muted">No se requiere firma del responsable</small>
+                </div>
+                <input type="radio" name="opcion_firma" value="sin_firma" class="form-check-input" id="opt-sin-firma">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seccion de firma presencial (oculta por defecto) -->
+<div id="seccion-presencial" style="display: none;">
+    <div class="mb-3">
+        <label for="firma_nombre" class="form-label">Nombre del responsable que firma *</label>
+        <input type="text" class="form-control form-control-lg" id="firma_nombre" placeholder="Nombre completo">
+    </div>
+
+    <div id="firma-preview" class="mb-3 text-center" style="display: none;">
+        <p class="text-success mb-2"><i class="bi bi-check-circle"></i> Firma capturada</p>
+        <img id="firma-preview-img" style="max-height: 100px; border: 1px solid #ddd; border-radius: 5px;">
+    </div>
+
+    <div class="d-grid mb-3">
+        <button type="button" class="btn btn-primary btn-lg" onclick="abrirModalFirma()">
+            <i class="bi bi-pen"></i> Capturar Firma
+        </button>
+    </div>
+</div>
+
+<!-- Botones finales -->
+<div class="d-grid gap-2 mb-5">
+    <button type="button" class="btn btn-success btn-lg" id="btn-completar" onclick="completarMantenimiento()" disabled>
+        <i class="bi bi-check-lg"></i> <span id="btn-texto">Completar Mantenimiento</span>
+    </button>
+    <a href="{{ url_for('tecnico.mantenimiento_ver', id=mantenimiento.id) }}" class="btn btn-outline-secondary">
+        Cancelar
+    </a>
+</div>
+
+<input type="hidden" id="firma_data">
+
+<!-- Modal Fullscreen para Firma -->
+<div id="firma-modal" class="firma-modal">
+    <div class="firma-modal-header">
+        <span><i class="bi bi-pen"></i> Firma del Responsable</span>
+        <button type="button" class="btn btn-light btn-sm" onclick="cerrarModalFirma()">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    <div class="firma-modal-body">
+        <div class="rotate-hint">
+            <i class="bi bi-phone-landscape"></i> Gire el telefono para mejor experiencia
+        </div>
+        <div class="firma-canvas-container">
+            <canvas id="signature-pad"></canvas>
+            <div class="firma-line"></div>
+            <div class="firma-label">Firma aqui</div>
+        </div>
+    </div>
+    <div class="firma-modal-footer">
+        <button type="button" class="btn btn-outline-danger" onclick="limpiarFirma()">
+            <i class="bi bi-eraser"></i> Limpiar
+        </button>
+        <button type="button" class="btn btn-success" onclick="confirmarFirma()">
+            <i class="bi bi-check-lg"></i> Confirmar
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script>
+    let signaturePad;
+    let firmaCapturada = false;
+    let opcionSeleccionada = null;
+
+    function seleccionarOpcion(opcion) {
+        opcionSeleccionada = opcion;
+
+        // Actualizar UI
+        document.querySelectorAll('.option-card').forEach(card => card.classList.remove('selected'));
+        document.querySelectorAll('input[name="opcion_firma"]').forEach(radio => radio.checked = false);
+
+        const radio = document.getElementById('opt-' + opcion.replace('_', '-'));
+        if (radio) {
+            radio.checked = true;
+            radio.closest('.option-card').classList.add('selected');
+        }
+
+        // Mostrar/ocultar seccion de firma presencial
+        const seccionPresencial = document.getElementById('seccion-presencial');
+        seccionPresencial.style.display = opcion === 'presencial' ? 'block' : 'none';
+
+        // Actualizar boton
+        const btn = document.getElementById('btn-completar');
+        const btnTexto = document.getElementById('btn-texto');
+
+        if (opcion === 'presencial') {
+            btn.disabled = !firmaCapturada;
+            btnTexto.textContent = 'Completar con Firma';
+        } else if (opcion === 'remota') {
+            btn.disabled = false;
+            btnTexto.textContent = 'Solicitar Firma Remota';
+        } else {
+            btn.disabled = false;
+            btnTexto.textContent = 'Completar sin Firma';
+        }
+    }
+
+    function initSignaturePad() {
+        const canvas = document.getElementById('signature-pad');
+        const container = canvas.parentElement;
+
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = container.offsetWidth * ratio;
+        canvas.height = container.offsetHeight * ratio;
+        canvas.style.width = container.offsetWidth + 'px';
+        canvas.style.height = container.offsetHeight + 'px';
+        canvas.getContext('2d').scale(ratio, ratio);
+
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',
+            penColor: 'rgb(0, 0, 100)',
+            minWidth: 1.5,
+            maxWidth: 4
+        });
+    }
+
+    function abrirModalFirma() {
+        const nombre = document.getElementById('firma_nombre').value.trim();
+        if (!nombre) {
+            alert('Por favor ingrese el nombre de quien firma.');
+            document.getElementById('firma_nombre').focus();
+            return;
+        }
+
+        document.getElementById('firma-modal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        setTimeout(initSignaturePad, 100);
+    }
+
+    function cerrarModalFirma() {
+        document.getElementById('firma-modal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function limpiarFirma() {
+        if (signaturePad) signaturePad.clear();
+    }
+
+    function confirmarFirma() {
+        if (signaturePad.isEmpty()) {
+            alert('Por favor, solicite al responsable que firme.');
+            return;
+        }
+
+        const firmaData = signaturePad.toDataURL('image/png');
+        document.getElementById('firma_data').value = firmaData;
+        document.getElementById('firma-preview-img').src = firmaData;
+        document.getElementById('firma-preview').style.display = 'block';
+
+        firmaCapturada = true;
+        document.getElementById('btn-completar').disabled = false;
+
+        cerrarModalFirma();
+    }
+
+    async function completarMantenimiento() {
+        if (!opcionSeleccionada) {
+            alert('Por favor seleccione una opcion.');
+            return;
+        }
+
+        const btn = document.getElementById('btn-completar');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+        const formData = {
+            opcion: opcionSeleccionada,
+            observaciones: document.getElementById('observaciones_generales')?.value || '',
+            firma_nombre: document.getElementById('firma_nombre')?.value || '',
+            firma_data: document.getElementById('firma_data')?.value || ''
+        };
+
+        try {
+            const response = await fetch('{{ url_for("tecnico.mantenimiento_completar_flexible", id=mantenimiento.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = '{{ url_for("tecnico.mantenimientos") }}';
+            } else {
+                alert(data.error || 'Error al procesar');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> <span id="btn-texto">Completar</span>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error de conexion');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> <span id="btn-texto">Completar</span>';
+        }
+    }
+
+    window.addEventListener('resize', function() {
+        if (document.getElementById('firma-modal').classList.contains('active') && signaturePad) {
+            setTimeout(initSignaturePad, 100);
+        }
+    });
+</script>
+{% endblock %}

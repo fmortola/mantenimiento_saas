@@ -34,6 +34,25 @@
                 {{ mantenimiento.equipos_con_mantenimiento() }}/{{ mantenimiento.equipos_mantenimiento.count() }}
             </div>
         </div>
+
+        {% if mantenimiento.estado in ['en_progreso', 'programado'] %}
+        <div class="d-grid mt-3">
+            <a href="{{ url_for('tecnico.mantenimiento_firma', id=mantenimiento.id) }}" class="btn btn-success btn-lg">
+                <i class="bi bi-check-circle"></i> Completar Mantenimiento
+            </a>
+        </div>
+        {% elif mantenimiento.estado == 'pendiente_firma' %}
+        <div class="alert alert-info mt-3 mb-0">
+            <i class="bi bi-hourglass-split"></i> Esperando firma del cliente
+        </div>
+        {% elif mantenimiento.estado == 'completado' %}
+        <div class="alert alert-success mt-3 mb-0">
+            <i class="bi bi-check-circle"></i> Mantenimiento completado
+            {% if mantenimiento.firma_fecha %}
+            <br><small>Firmado por {{ mantenimiento.firma_nombre }} el {{ mantenimiento.firma_fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 

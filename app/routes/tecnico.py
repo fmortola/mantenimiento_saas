@@ -475,6 +475,122 @@ def mantenimiento_equipo_completar(mant_id, equipo_id):
     flash('Mantenimiento del equipo completado.', 'success')
     return redirect(url_for('tecnico.mantenimiento_ver', id=mant_id))
 
+
+@tecnico_bp.route('/mantenimientos/<int:id>/firma')
+@login_required
+@tecnico_required
+def mantenimiento_firma(id):
+    """Página para completar mantenimiento con opciones de firma"""
+    mantenimiento = Mantenimiento.query.get_or_404(id)
+    if current_user not in mantenimiento.tecnicos:
+        flash('No tienes acceso a este mantenimiento.', 'danger')
+        return redirect(url_for('tecnico.mantenimientos'))
+
+    # Contar equipos
+    total_equipos = mantenimiento.equipos_mantenimiento.count()
+    equipos_completados = sum(1 for me in mantenimiento.equipos_mantenimiento if me.estado == 'completado')
+
+    return render_template('tecnico/mantenimientos/firma.html',
+                           mantenimiento=mantenimiento,
+                           total_equipos=total_equipos,
+                           equipos_completados=equipos_completados)
+
+
+@tecnico_bp.route('/mantenimientos/<int:id>/completar-flexible', methods=['POST'])
+@login_required
+@tecnico_required
+def mantenimiento_completar_flexible(id):
+    """Completa el mantenimiento con opciones: firma presencial, remota o sin firma"""
+    import secrets
+    from app.services.notificaciones import notificar_cliente
+
+    mantenimiento = Mantenimiento.query.get_or_404(id)
+    if current_user not in mantenimiento.tecnicos:
+        return jsonify({'error': 'No tienes acceso a este mantenimiento'}), 403
+
+    data = request.get_json()
+    opcion = data.get('opcion')
+    observaciones = data.get('observaciones')
+
+    if not opcion:
+        return jsonify({'error': 'Seleccione una opcion'}), 400
+
+    # Guardar observaciones
+    if observaciones:
+        mantenimiento.observaciones = observaciones
+
+    mantenimiento.fecha_fin = datetime.utcnow()
+
+    if opcion == 'presencial':
+        # Firma presencial
+        firma_data = data.get('firma_data')
+        firma_nombre = data.get('firma_nombre')
+
+        if not firma_data or not firma_nombre:
+            return jsonify({'error': 'Falta la firma del responsable'}), 400
+
+        mantenimiento.firma_cliente = firma_data
+        mantenimiento.firma_nombre = firma_nombre
+        mantenimiento.firma_fecha = datetime.utcnow()
+        mantenimiento.firma_estado = 'firmado'
+        mantenimiento.estado = 'completado'
+
+        mensaje_flash = 'Mantenimiento completado con firma.'
+        titulo_notif = 'Mantenimiento Completado con Firma'
+
+    elif opcion == 'remota':
+        # Firma remota - generar token y enviar notificacion
+        # Generar token unico
+        mantenimiento.firma_token = secrets.token_urlsafe(32)
+        mantenimiento.firma_estado = 'pendiente'
+        mantenimiento.estado = 'pendiente_firma'
+
+        db.session.commit()
+
+        # URL para firmar
+        firma_url = url_for('firma_publica.firmar_mantenimiento', token=mantenimiento.firma_token, _external=True)
+
+        # Notificar al cliente
+        notificar_cliente(
+            mantenimiento.cliente,
+            'Firma Requerida',
+            f'El mantenimiento {mantenimiento.numero} ha sido completado. Por favor firme para confirmar.',
+            firma_url
+        )
+
+        # Notificar admin
+        notificar_admins(
+            'Mantenimiento Pendiente de Firma',
+            f'El tecnico {current_user.nombre} ha solicitado firma remota para el mantenimiento {mantenimiento.numero}',
+            url_for('admin.mantenimiento_ver', id=mantenimiento.id),
+            tenant_id=current_user.tenant_id
+        )
+
+        flash('Se ha enviado solicitud de firma al cliente.', 'info')
+        return jsonify({'success': True, 'message': 'Solicitud de firma enviada'})
+
+    else:
+        # Sin firma
+        mantenimiento.firma_estado = 'sin_firma'
+        mantenimiento.estado = 'completado'
+
+        mensaje_flash = 'Mantenimiento completado sin firma.'
+        titulo_notif = 'Mantenimiento Completado'
+
+    db.session.commit()
+
+    # Notificar a administradores
+    notificar_admins(
+        titulo_notif,
+        f'El tecnico {current_user.nombre} ha completado el mantenimiento {mantenimiento.numero}',
+        url_for('admin.mantenimiento_ver', id=mantenimiento.id),
+        tenant_id=current_user.tenant_id
+    )
+
+    flash(mensaje_flash, 'success')
+    return jsonify({'success': True, 'message': mensaje_flash})
+
+
 # ==================== FOTOS ====================
 @tecnico_bp.route('/ordenes/<int:id>/foto', methods=['POST'])
 @login_required

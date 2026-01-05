@@ -1,6 +1,6 @@
 // Service Worker para PWA
 // IMPORTANTE: Incrementar VERSION cuando se hagan cambios para forzar actualización
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 const CACHE_NAME = `servicio-tecnico-v${VERSION}`;
 const urlsToCache = [
     '/',

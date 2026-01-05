@@ -148,11 +148,12 @@ def ticket_nuevo():
         db.session.add(ticket)
         db.session.commit()
 
-        # Notificar a administradores
+        # Notificar a administradores del mismo tenant
         notificar_admins(
             'Nuevo Ticket',
             f'El cliente {cliente.nombre} ha creado el ticket {ticket.numero}: {ticket.asunto}',
-            url_for('admin.ticket_ver', id=ticket.id)
+            url_for('admin.ticket_ver', id=ticket.id),
+            tenant_id=current_user.tenant_id
         )
 
         flash('Ticket creado exitosamente. Nos pondremos en contacto pronto.', 'success')

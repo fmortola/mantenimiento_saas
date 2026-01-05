@@ -198,11 +198,12 @@ def orden_completar(id):
     orden.fecha_fin = datetime.utcnow()
     db.session.commit()
 
-    # Notificar a administradores
+    # Notificar a administradores del mismo tenant
     notificar_admins(
         'Orden Completada',
         f'El técnico {current_user.nombre} ha completado la orden {orden.numero}',
-        url_for('admin.orden_ver', id=orden.id)
+        url_for('admin.orden_ver', id=orden.id),
+        tenant_id=current_user.tenant_id
     )
 
     flash('Orden completada exitosamente.', 'success')
@@ -249,11 +250,12 @@ def ticket_resolver(id):
     ticket.respuesta_admin = request.form.get('respuesta')
     db.session.commit()
 
-    # Notificar a administradores
+    # Notificar a administradores del mismo tenant
     notificar_admins(
         'Ticket Resuelto',
         f'El técnico {current_user.nombre} ha resuelto el ticket {ticket.numero}',
-        url_for('admin.ticket_ver', id=ticket.id)
+        url_for('admin.ticket_ver', id=ticket.id),
+        tenant_id=current_user.tenant_id
     )
 
     flash('Ticket resuelto.', 'success')
@@ -360,11 +362,12 @@ def mantenimiento_agregar_equipo(id):
     db.session.add(mant_equipo)
     db.session.commit()
 
-    # Notificar a administradores
+    # Notificar a administradores del mismo tenant
     notificar_admins(
         'Nuevo Equipo Registrado',
         f'El técnico {current_user.nombre} ha registrado un nuevo equipo: {equipo.tipo} - {equipo.nombre}',
-        url_for('admin.mantenimiento_ver', id=mantenimiento.id)
+        url_for('admin.mantenimiento_ver', id=mantenimiento.id),
+        tenant_id=current_user.tenant_id
     )
 
     flash('Equipo registrado y agregado al mantenimiento.', 'success')
@@ -614,11 +617,12 @@ def orden_completar_con_firma(id):
 
     db.session.commit()
 
-    # Notificar a administradores
+    # Notificar a administradores del mismo tenant
     notificar_admins(
         'Orden Completada con Firma',
         f'El tecnico {current_user.nombre} ha completado la orden {orden.numero} con firma del cliente',
-        url_for('admin.orden_ver', id=orden.id)
+        url_for('admin.orden_ver', id=orden.id),
+        tenant_id=current_user.tenant_id
     )
 
     flash('Orden completada exitosamente con firma del cliente.', 'success')

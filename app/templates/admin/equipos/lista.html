@@ -94,7 +94,10 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ url_for('admin.equipo_editar', id=equipo.id) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ url_for('admin.equipo_historial', id=equipo.id) }}" class="btn btn-sm btn-outline-info" title="Ver historial">
+                                <i class="bi bi-clock-history"></i>
+                            </a>
+                            <a href="{{ url_for('admin.equipo_editar', id=equipo.id) }}" class="btn btn-sm btn-outline-primary" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         </td>

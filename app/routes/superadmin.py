@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, jsonify, Response
 from flask_login import login_required, current_user
 from app import db
 from app.models.tenant import Tenant
@@ -6,13 +6,18 @@ from app.models.plan import Plan, PLANES_PREDEFINIDOS
 from app.models.usuario import Usuario
 from app.models.cliente import Cliente
 from app.models.equipo import Equipo
+from app.models.ubicacion import Ubicacion
 from app.models.tipo_equipo import TipoEquipo
 from app.models.plantilla_tipo_equipo import PlantillaTipoEquipo, PlantillaTipoEquipoItem
-from app.models.orden_trabajo import OrdenTrabajo
+from app.models.orden_trabajo import OrdenTrabajo, FotoTrabajo
+from app.models.orden_actividad import OrdenActividad
 from app.models.ticket import Ticket
+from app.models.mantenimiento import Mantenimiento, MantenimientoEquipo
+from app.models.notificacion import Notificacion
 from app.utils.tenant_utils import superadmin_required
 from datetime import datetime, timedelta
 import re
+import json
 
 superadmin_bp = Blueprint('superadmin', __name__)
 
@@ -256,6 +261,215 @@ def tenant_extender(id):
     db.session.commit()
     flash(f'Suscripcion extendida por {dias} dias.', 'success')
     return redirect(url_for('superadmin.tenant_ver', id=id))
+
+
+@superadmin_bp.route('/tenants/<int:id>/backup')
+@login_required
+@superadmin_required
+def tenant_backup(id):
+    """Genera un backup JSON de todos los datos del tenant"""
+    tenant = Tenant.query.get_or_404(id)
+
+    def serialize_date(obj):
+        if obj:
+            return obj.isoformat()
+        return None
+
+    # Recopilar todos los datos
+    backup_data = {
+        'tenant': {
+            'nombre': tenant.nombre,
+            'slug': tenant.slug,
+            'email_contacto': tenant.email_contacto,
+            'telefono': tenant.telefono,
+            'plan': tenant.plan.nombre if tenant.plan else None,
+            'fecha_creacion': serialize_date(tenant.fecha_creacion),
+            'fecha_vencimiento': serialize_date(tenant.fecha_vencimiento),
+        },
+        'usuarios': [],
+        'tipos_equipo': [],
+        'clientes': [],
+        'ubicaciones': [],
+        'equipos': [],
+        'tickets': [],
+        'ordenes': [],
+        'mantenimientos': [],
+    }
+
+    # Usuarios
+    for u in Usuario.query.filter_by(tenant_id=id).all():
+        backup_data['usuarios'].append({
+            'nombre': u.nombre,
+            'email': u.email,
+            'telefono': u.telefono,
+            'rol': u.rol,
+            'activo': u.activo,
+            'fecha_registro': serialize_date(u.fecha_registro),
+        })
+
+    # Tipos de equipo
+    for te in TipoEquipo.query.filter_by(tenant_id=id).all():
+        backup_data['tipos_equipo'].append({
+            'nombre': te.nombre,
+            'icono': te.icono,
+            'descripcion': te.descripcion,
+            'activo': te.activo,
+        })
+
+    # Clientes
+    for c in Cliente.query.filter_by(tenant_id=id).all():
+        backup_data['clientes'].append({
+            'id': c.id,
+            'nombre': c.nombre,
+            'rif': c.rif,
+            'email': c.email,
+            'persona_contacto': c.persona_contacto,
+            'telefono_principal': c.telefono_principal,
+            'activo': c.activo,
+        })
+
+    # Ubicaciones
+    for ub in Ubicacion.query.filter_by(tenant_id=id).all():
+        backup_data['ubicaciones'].append({
+            'id': ub.id,
+            'cliente_id': ub.cliente_id,
+            'nombre': ub.nombre,
+            'direccion': ub.direccion,
+            'ciudad': ub.ciudad,
+            'persona_contacto': ub.persona_contacto,
+            'telefono': ub.telefono,
+        })
+
+    # Equipos
+    for eq in Equipo.query.filter_by(tenant_id=id).all():
+        backup_data['equipos'].append({
+            'id': eq.id,
+            'ubicacion_id': eq.ubicacion_id,
+            'tipo': eq.tipo,
+            'nombre': eq.nombre,
+            'marca': eq.marca,
+            'modelo': eq.modelo,
+            'serial': eq.serial,
+            'departamento': eq.departamento,
+            'condicion': eq.condicion,
+        })
+
+    # Tickets
+    for t in Ticket.query.filter_by(tenant_id=id).all():
+        backup_data['tickets'].append({
+            'id': t.id,
+            'cliente_id': t.cliente_id,
+            'equipo_id': t.equipo_id,
+            'asunto': t.asunto,
+            'descripcion': t.descripcion,
+            'estado': t.estado,
+            'prioridad': t.prioridad,
+            'fecha_creacion': serialize_date(t.fecha_creacion),
+        })
+
+    # Ordenes de trabajo
+    for o in OrdenTrabajo.query.filter_by(tenant_id=id).all():
+        backup_data['ordenes'].append({
+            'id': o.id,
+            'numero': o.numero,
+            'tipo': o.tipo,
+            'descripcion_solicitud': o.descripcion_solicitud,
+            'descripcion_trabajo': o.descripcion_trabajo,
+            'estado': o.estado,
+            'cliente_id': o.cliente_id,
+            'ubicacion_id': o.ubicacion_id,
+            'equipo_id': o.equipo_id,
+            'fecha_creacion': serialize_date(o.fecha_creacion),
+            'fecha_programada': serialize_date(o.fecha_programada),
+            'fecha_fin': serialize_date(o.fecha_fin),
+        })
+
+    # Mantenimientos
+    for m in Mantenimiento.query.filter_by(tenant_id=id).all():
+        backup_data['mantenimientos'].append({
+            'id': m.id,
+            'nombre': m.nombre,
+            'tipo': m.tipo,
+            'descripcion': m.descripcion,
+            'estado': m.estado,
+            'fecha_programada': serialize_date(m.fecha_programada),
+        })
+
+    # Generar JSON y descargar
+    json_data = json.dumps(backup_data, indent=2, ensure_ascii=False)
+    filename = f"backup_{tenant.slug}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+    return Response(
+        json_data,
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment;filename={filename}'}
+    )
+
+
+@superadmin_bp.route('/tenants/<int:id>/eliminar', methods=['POST'])
+@login_required
+@superadmin_required
+def tenant_eliminar(id):
+    """Elimina un tenant y todos sus datos"""
+    tenant = Tenant.query.get_or_404(id)
+
+    # Verificar confirmacion
+    confirmacion = request.form.get('confirmacion', '')
+    if confirmacion != tenant.slug:
+        flash(f'Debes escribir "{tenant.slug}" para confirmar la eliminacion.', 'danger')
+        return redirect(url_for('superadmin.tenant_ver', id=id))
+
+    nombre_tenant = tenant.nombre
+
+    try:
+        # Eliminar en orden para respetar foreign keys
+        # 1. Notificaciones
+        Notificacion.query.filter_by(tenant_id=id).delete()
+
+        # 2. Actividades de ordenes
+        for orden in OrdenTrabajo.query.filter_by(tenant_id=id).all():
+            OrdenActividad.query.filter_by(orden_id=orden.id).delete()
+            FotoTrabajo.query.filter_by(orden_id=orden.id).delete()
+
+        # 3. Mantenimientos de equipos
+        for mant in Mantenimiento.query.filter_by(tenant_id=id).all():
+            MantenimientoEquipo.query.filter_by(mantenimiento_id=mant.id).delete()
+
+        # 4. Ordenes de trabajo
+        OrdenTrabajo.query.filter_by(tenant_id=id).delete()
+
+        # 5. Tickets
+        Ticket.query.filter_by(tenant_id=id).delete()
+
+        # 6. Mantenimientos
+        Mantenimiento.query.filter_by(tenant_id=id).delete()
+
+        # 7. Equipos
+        Equipo.query.filter_by(tenant_id=id).delete()
+
+        # 8. Ubicaciones
+        Ubicacion.query.filter_by(tenant_id=id).delete()
+
+        # 9. Clientes
+        Cliente.query.filter_by(tenant_id=id).delete()
+
+        # 10. Tipos de equipo
+        TipoEquipo.query.filter_by(tenant_id=id).delete()
+
+        # 11. Usuarios
+        Usuario.query.filter_by(tenant_id=id).delete()
+
+        # 12. Tenant
+        db.session.delete(tenant)
+
+        db.session.commit()
+        flash(f'Tenant "{nombre_tenant}" y todos sus datos han sido eliminados.', 'success')
+        return redirect(url_for('superadmin.tenants'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar tenant: {str(e)}', 'danger')
+        return redirect(url_for('superadmin.tenant_ver', id=id))
 
 
 # ==================== USUARIOS DE TENANT ====================

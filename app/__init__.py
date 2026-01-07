@@ -1,6 +1,6 @@
-from flask import Flask
+from flask import Flask, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from config import Config
@@ -44,6 +44,28 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
     app.register_blueprint(firma_publica_bp)  # Rutas públicas sin prefix
+
+    # Verificar aceptación de política antes de cada request
+    @app.before_request
+    def verificar_politica_aceptada():
+        # Rutas que no requieren verificación
+        rutas_excluidas = [
+            'auth.login', 'auth.logout', 'auth.aceptar_politica',
+            'auth.manifest', 'auth.service_worker',
+            'static', 'firma_publica.firmar_orden'
+        ]
+
+        if current_user.is_authenticated:
+            # Superadmin no requiere aceptar política
+            if current_user.es_superadmin():
+                return None
+
+            # Si no ha aceptado la política y no está en una ruta excluida
+            if not current_user.acepto_politica:
+                if request.endpoint and request.endpoint not in rutas_excluidas:
+                    return redirect(url_for('auth.aceptar_politica'))
+
+        return None
 
     # Importar todos los modelos para que SQLAlchemy los conozca
     from app.models import (

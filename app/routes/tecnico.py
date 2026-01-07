@@ -6,6 +6,7 @@ from app.models.usuario import Usuario
 from app.models.cliente import Cliente
 from app.models.ubicacion import Ubicacion
 from app.models.equipo import Equipo, TIPOS_EQUIPO, CONDICIONES_EQUIPO
+from app.models.tipo_equipo import TipoEquipo
 from app.models.orden_trabajo import OrdenTrabajo, FotoTrabajo
 from app.models.orden_actividad import OrdenActividad
 from app.models.ticket import Ticket
@@ -94,7 +95,24 @@ def orden_ver(id):
         flash('No tienes acceso a esta orden.', 'danger')
         return redirect(url_for('tecnico.ordenes'))
 
-    return render_template('tecnico/ordenes/ver.html', orden=orden)
+    # Tipos de equipo para crear nuevo
+    tipos_equipo = TipoEquipo.query.filter_by(
+        tenant_id=current_user.tenant_id,
+        activo=True
+    ).order_by(TipoEquipo.orden).all()
+
+    # Equipos de la ubicacion (si tiene)
+    equipos_ubicacion = []
+    if orden.ubicacion_id:
+        equipos_ubicacion = Equipo.query.filter_by(
+            ubicacion_id=orden.ubicacion_id,
+            tenant_id=current_user.tenant_id
+        ).order_by(Equipo.nombre).all()
+
+    return render_template('tecnico/ordenes/ver.html',
+                           orden=orden,
+                           tipos_equipo=tipos_equipo,
+                           equipos_ubicacion=equipos_ubicacion)
 
 @tecnico_bp.route('/ordenes/<int:id>/iniciar', methods=['POST'])
 @login_required
@@ -182,6 +200,138 @@ def orden_eliminar_actividad(id, act_id):
     db.session.commit()
     flash('Actividad eliminada.', 'success')
     return redirect(url_for('tecnico.orden_ver', id=id))
+
+@tecnico_bp.route('/ordenes/<int:id>/equipo', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_asociar_equipo(id):
+    """Asocia un equipo existente a la orden"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    equipo_id = request.form.get('equipo_id', type=int)
+
+    if equipo_id:
+        # Verificar que el equipo existe y pertenece al tenant
+        equipo = Equipo.query.filter_by(id=equipo_id, tenant_id=current_user.tenant_id).first()
+        if equipo:
+            orden.equipo_id = equipo_id
+            db.session.commit()
+            flash(f'Equipo "{equipo.nombre or equipo.tipo}" asociado a la orden.', 'success')
+        else:
+            flash('Equipo no encontrado.', 'danger')
+    else:
+        # Quitar equipo asociado
+        orden.equipo_id = None
+        db.session.commit()
+        flash('Equipo desasociado de la orden.', 'info')
+
+    return redirect(url_for('tecnico.orden_ver', id=id))
+
+@tecnico_bp.route('/ordenes/<int:id>/equipo/nuevo', methods=['POST'])
+@login_required
+@tecnico_required
+def orden_crear_equipo(id):
+    """Crea un nuevo equipo y lo asocia a la orden"""
+    orden = OrdenTrabajo.query.get_or_404(id)
+    if current_user not in orden.tecnicos.all():
+        flash('No tienes acceso a esta orden.', 'danger')
+        return redirect(url_for('tecnico.ordenes'))
+
+    if not orden.ubicacion_id:
+        flash('La orden no tiene una ubicacion asignada. No se puede crear equipo.', 'warning')
+        return redirect(url_for('tecnico.orden_ver', id=id))
+
+    tipo_equipo_id = request.form.get('tipo_equipo_id', type=int)
+    nombre = request.form.get('nombre', '').strip()
+    marca = request.form.get('marca', '').strip()
+    modelo = request.form.get('modelo', '').strip()
+
+    if not tipo_equipo_id:
+        flash('Debes seleccionar un tipo de equipo.', 'warning')
+        return redirect(url_for('tecnico.orden_ver', id=id))
+
+    # Crear el nuevo equipo
+    equipo = Equipo(
+        tipo_equipo_id=tipo_equipo_id,
+        nombre=nombre or None,
+        marca=marca or None,
+        modelo=modelo or None,
+        ubicacion_id=orden.ubicacion_id,
+        creado_por_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        condicion='regular'
+    )
+    db.session.add(equipo)
+    db.session.flush()  # Para obtener el ID
+
+    # Asociar a la orden
+    orden.equipo_id = equipo.id
+    db.session.commit()
+
+    flash(f'Equipo "{nombre or equipo.tipo}" creado y asociado a la orden.', 'success')
+    return redirect(url_for('tecnico.orden_ver', id=id))
+
+@tecnico_bp.route('/api/ubicacion/<int:ubicacion_id>/equipos')
+@login_required
+@tecnico_required
+def api_equipos_ubicacion(ubicacion_id):
+    """API para obtener equipos de una ubicacion"""
+    ubicacion = Ubicacion.query.filter_by(
+        id=ubicacion_id,
+        tenant_id=current_user.tenant_id
+    ).first()
+
+    if not ubicacion:
+        return jsonify([])
+
+    equipos = Equipo.query.filter_by(
+        ubicacion_id=ubicacion_id,
+        tenant_id=current_user.tenant_id
+    ).order_by(Equipo.nombre).all()
+
+    return jsonify([{
+        'id': e.id,
+        'nombre': e.nombre or '',
+        'tipo': e.tipo,
+        'marca': e.marca or '',
+        'modelo': e.modelo or ''
+    } for e in equipos])
+
+@tecnico_bp.route('/equipos/<int:id>/historial')
+@login_required
+@tecnico_required
+def equipo_historial(id):
+    """Ver historial de un equipo"""
+    equipo = Equipo.query.filter_by(
+        id=id,
+        tenant_id=current_user.tenant_id
+    ).first_or_404()
+
+    # Ordenes de trabajo del equipo
+    ordenes = OrdenTrabajo.query.filter_by(
+        equipo_id=equipo.id,
+        tenant_id=current_user.tenant_id
+    ).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+
+    # Tickets del equipo
+    tickets = Ticket.query.filter_by(
+        equipo_id=equipo.id,
+        tenant_id=current_user.tenant_id
+    ).order_by(Ticket.fecha_creacion.desc()).all()
+
+    # Mantenimientos del equipo
+    mantenimientos = MantenimientoEquipo.query.filter_by(
+        equipo_id=equipo.id
+    ).order_by(MantenimientoEquipo.fecha_inicio.desc()).all()
+
+    return render_template('tecnico/equipos/historial.html',
+                           equipo=equipo,
+                           ordenes=ordenes,
+                           tickets=tickets,
+                           mantenimientos=mantenimientos)
 
 @tecnico_bp.route('/ordenes/<int:id>/completar', methods=['POST'])
 @login_required

@@ -58,6 +58,87 @@
     </div>
 </div>
 
+<!-- Equipo Relacionado (opcional) -->
+{% if orden.ubicacion_id %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-pc-display"></i> Equipo Relacionado</h6>
+        <small class="text-muted">(opcional)</small>
+    </div>
+    <div class="card-body">
+        {% if orden.equipo %}
+        <!-- Equipo ya asociado -->
+        <div class="alert alert-success py-2 mb-2">
+            <strong>{{ orden.equipo.nombre or orden.equipo.tipo }}</strong>
+            {% if orden.equipo.marca or orden.equipo.modelo %}
+            <br><small class="text-muted">{{ orden.equipo.marca }} {{ orden.equipo.modelo }}</small>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('tecnico.equipo_historial', id=orden.equipo.id) }}" class="btn btn-sm btn-outline-info flex-grow-1">
+                <i class="bi bi-clock-history"></i> Ver Historial
+            </a>
+            <form method="POST" action="{{ url_for('tecnico.orden_asociar_equipo', id=orden.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="equipo_id" value="">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x"></i> Quitar
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <!-- Seleccionar o crear equipo -->
+        {% if equipos_ubicacion %}
+        <form method="POST" action="{{ url_for('tecnico.orden_asociar_equipo', id=orden.id) }}" class="mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="form-label small">Seleccionar equipo existente:</label>
+            <select name="equipo_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">-- Seleccionar --</option>
+                {% for eq in equipos_ubicacion %}
+                <option value="{{ eq.id }}">{{ eq.nombre or eq.tipo }} {% if eq.marca %}({{ eq.marca }}){% endif %}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% else %}
+        <p class="text-muted small mb-2">No hay equipos registrados en esta ubicacion.</p>
+        {% endif %}
+
+        <!-- Crear nuevo equipo -->
+        <button type="button" class="btn btn-outline-primary btn-sm w-100" data-bs-toggle="collapse" data-bs-target="#formNuevoEquipo">
+            <i class="bi bi-plus-circle"></i> Crear nuevo equipo
+        </button>
+        <div class="collapse mt-2" id="formNuevoEquipo">
+            <form method="POST" action="{{ url_for('tecnico.orden_crear_equipo', id=orden.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <select name="tipo_equipo_id" class="form-select form-select-sm" required>
+                        <option value="">-- Tipo de equipo --</option>
+                        {% for tipo in tipos_equipo %}
+                        <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre/identificador (ej: Switch Piso 2)">
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <input type="text" name="marca" class="form-control form-control-sm" placeholder="Marca">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" name="modelo" class="form-control form-control-sm" placeholder="Modelo">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-check"></i> Crear y Asociar
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Fotos -->
 {% if orden.fotos.count() > 0 %}
 <div class="card mb-3">

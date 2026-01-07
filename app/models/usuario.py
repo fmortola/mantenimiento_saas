@@ -21,6 +21,10 @@ class Usuario(UserMixin, db.Model):
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Aceptación de política de privacidad
+    acepto_politica = db.Column(db.Boolean, default=False)
+    fecha_acepto_politica = db.Column(db.DateTime, nullable=True)
+
     # Relacion con Tenant (NULL solo para superadmin)
     tenant_id = db.Column(db.Integer, db.ForeignKey('tenant.id'), nullable=True)
     tenant = db.relationship('Tenant', backref='usuarios')

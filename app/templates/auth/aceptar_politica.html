@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Politica de Privacidad - Servicio Tecnico{% endblock %}
+
+{% block body_class %}bg-light{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-shield-check"></i> Politica de Privacidad y Uso de Datos</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="alert alert-info m-3 mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Para continuar usando el sistema, debes leer y aceptar nuestra politica de privacidad.
+                        <strong>Desplazate hasta el final del documento para habilitar el boton de aceptar.</strong>
+                    </div>
+
+                    <!-- Contenedor de la política con scroll -->
+                    <div id="politica-container" class="p-4" style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; margin: 1rem; border-radius: 0.25rem; background: #f8f9fa;">
+
+                        <h5>1. Introduccion</h5>
+                        <p>Bienvenido a ServTec, un sistema de gestion de servicio tecnico desarrollado por YoYoSoft - Soluciones Tecnologicas. Esta politica de privacidad describe como recopilamos, usamos, almacenamos y protegemos tu informacion personal cuando utilizas nuestra plataforma.</p>
+                        <p>Al acceder y utilizar este sistema, aceptas los terminos descritos en esta politica. Si no estas de acuerdo con alguno de estos terminos, te pedimos que no utilices el sistema.</p>
+
+                        <h5>2. Informacion que Recopilamos</h5>
+                        <p>Recopilamos los siguientes tipos de informacion:</p>
+                        <ul>
+                            <li><strong>Datos de identificacion:</strong> Nombre completo, correo electronico, numero de telefono.</li>
+                            <li><strong>Datos de acceso:</strong> Credenciales de inicio de sesion (la contrasena se almacena de forma encriptada).</li>
+                            <li><strong>Datos de ubicacion:</strong> Direcciones de clientes y ubicaciones de equipos para la gestion de servicios.</li>
+                            <li><strong>Datos de equipos:</strong> Informacion sobre equipos tecnicos incluyendo marca, modelo, numero de serie.</li>
+                            <li><strong>Registros de actividad:</strong> Historial de ordenes de trabajo, tickets de soporte, mantenimientos realizados.</li>
+                            <li><strong>Contenido multimedia:</strong> Fotografias tomadas durante los servicios tecnicos como evidencia del trabajo realizado.</li>
+                            <li><strong>Firmas digitales:</strong> Firmas electronicas para confirmar la recepcion y conformidad de los servicios.</li>
+                        </ul>
+
+                        <h5>3. Uso de la Informacion</h5>
+                        <p>La informacion recopilada se utiliza para:</p>
+                        <ul>
+                            <li>Gestionar y coordinar servicios tecnicos.</li>
+                            <li>Mantener un historial de trabajos realizados en equipos.</li>
+                            <li>Generar reportes y estadisticas de servicio.</li>
+                            <li>Enviar notificaciones relacionadas con el servicio (tickets, ordenes, mantenimientos).</li>
+                            <li>Mejorar la calidad del servicio y la experiencia del usuario.</li>
+                            <li>Cumplir con obligaciones legales y contractuales.</li>
+                        </ul>
+
+                        <h5>4. Almacenamiento y Seguridad</h5>
+                        <p>Implementamos medidas de seguridad tecnicas y organizativas para proteger tu informacion:</p>
+                        <ul>
+                            <li>Las contrasenas se almacenan utilizando algoritmos de hash seguros.</li>
+                            <li>El acceso al sistema requiere autenticacion.</li>
+                            <li>Los datos se almacenan en servidores seguros.</li>
+                            <li>El acceso a la informacion esta restringido segun el rol del usuario.</li>
+                            <li>Se realizan copias de seguridad periodicas.</li>
+                        </ul>
+
+                        <h5>5. Comparticion de Datos</h5>
+                        <p>No vendemos ni compartimos tu informacion personal con terceros, excepto en los siguientes casos:</p>
+                        <ul>
+                            <li>Cuando sea necesario para la prestacion del servicio contratado.</li>
+                            <li>Cuando sea requerido por ley o autoridad competente.</li>
+                            <li>Con el consentimiento expreso del usuario.</li>
+                        </ul>
+
+                        <h5>6. Derechos del Usuario</h5>
+                        <p>Como usuario, tienes derecho a:</p>
+                        <ul>
+                            <li><strong>Acceso:</strong> Solicitar informacion sobre los datos que tenemos sobre ti.</li>
+                            <li><strong>Rectificacion:</strong> Corregir datos inexactos o incompletos.</li>
+                            <li><strong>Eliminacion:</strong> Solicitar la eliminacion de tus datos personales.</li>
+                            <li><strong>Portabilidad:</strong> Recibir tus datos en un formato estructurado.</li>
+                            <li><strong>Oposicion:</strong> Oponerte al tratamiento de tus datos en ciertas circunstancias.</li>
+                        </ul>
+                        <p>Para ejercer estos derechos, contacta al administrador de tu organizacion o a nuestro equipo de soporte.</p>
+
+                        <h5>7. Retencion de Datos</h5>
+                        <p>Conservamos tu informacion mientras mantengas una cuenta activa en el sistema o mientras sea necesario para cumplir con los fines descritos en esta politica. Los datos pueden ser retenidos por periodos adicionales cuando sea requerido por ley.</p>
+
+                        <h5>8. Cookies y Tecnologias Similares</h5>
+                        <p>Este sistema utiliza cookies de sesion necesarias para su funcionamiento. Estas cookies son esenciales para:</p>
+                        <ul>
+                            <li>Mantener tu sesion iniciada.</li>
+                            <li>Recordar tus preferencias de usuario.</li>
+                            <li>Garantizar la seguridad de tu cuenta.</li>
+                        </ul>
+
+                        <h5>9. Notificaciones Push</h5>
+                        <p>Si activas las notificaciones push, recibiras alertas sobre:</p>
+                        <ul>
+                            <li>Nuevos tickets asignados.</li>
+                            <li>Actualizaciones en ordenes de trabajo.</li>
+                            <li>Recordatorios de mantenimientos programados.</li>
+                        </ul>
+                        <p>Puedes desactivar las notificaciones en cualquier momento desde la configuracion de tu navegador o dispositivo.</p>
+
+                        <h5>10. Cambios en la Politica</h5>
+                        <p>Nos reservamos el derecho de modificar esta politica de privacidad en cualquier momento. Los cambios seran notificados a traves del sistema y podra requerirse una nueva aceptacion.</p>
+
+                        <h5>11. Contacto</h5>
+                        <p>Si tienes preguntas sobre esta politica de privacidad o sobre el tratamiento de tus datos, puedes contactarnos a traves de:</p>
+                        <ul>
+                            <li><strong>Email:</strong> famb@me.com</li>
+                            <li><strong>Horario de atencion:</strong> Lunes a Viernes, 10:00 - 16:00</li>
+                        </ul>
+
+                        <div class="text-center mt-4 pt-3 border-top">
+                            <p class="text-muted mb-0"><strong>Ultima actualizacion:</strong> Enero 2026</p>
+                            <p class="text-muted"><strong>Version:</strong> 1.0</p>
+                        </div>
+
+                        <!-- Marcador de fin para detectar scroll -->
+                        <div id="fin-politica"></div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form method="POST" action="{{ url_for('auth.aceptar_politica') }}" id="form-aceptar">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="acepto" name="acepto" disabled>
+                            <label class="form-check-label" for="acepto">
+                                He leido y acepto la Politica de Privacidad y Uso de Datos
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar y Salir
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="btn-aceptar" disabled>
+                                <i class="bi bi-check-circle"></i> Aceptar y Continuar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('politica-container');
+    const checkbox = document.getElementById('acepto');
+    const btnAceptar = document.getElementById('btn-aceptar');
+    let scrolledToBottom = false;
+
+    function checkScroll() {
+        // Verificar si llegó al final (con margen de 20px)
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+
+        if (isAtBottom && !scrolledToBottom) {
+            scrolledToBottom = true;
+            checkbox.disabled = false;
+            // Efecto visual para indicar que ya puede aceptar
+            checkbox.parentElement.classList.add('text-primary');
+        }
+    }
+
+    container.addEventListener('scroll', checkScroll);
+
+    // Verificar al cargar (por si el contenido es corto)
+    checkScroll();
+
+    // Habilitar botón cuando se marca el checkbox
+    checkbox.addEventListener('change', function() {
+        btnAceptar.disabled = !this.checked;
+    });
+
+    // Validar antes de enviar
+    document.getElementById('form-aceptar').addEventListener('submit', function(e) {
+        if (!checkbox.checked) {
+            e.preventDefault();
+            alert('Debes aceptar la politica de privacidad para continuar.');
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block bottom_nav %}
+<!-- Sin navegación inferior en esta página -->
+{% endblock %}

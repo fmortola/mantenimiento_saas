@@ -80,6 +80,29 @@
                     <i class="bi bi-bar-chart"></i> Reportes
                 </a>
             </li>
+            <li class="nav-item mt-2">
+                <small class="text-muted px-3">CREAR NUEVO</small>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white" href="{{ url_for('admin.cliente_nuevo') }}">
+                    <i class="bi bi-plus-circle"></i> Nuevo Cliente
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white" href="{{ url_for('admin.tecnico_nuevo') }}">
+                    <i class="bi bi-plus-circle"></i> Nuevo Técnico
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white" href="{{ url_for('admin.equipos') }}">
+                    <i class="bi bi-pc-display"></i> Ver Equipos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white" href="{{ url_for('admin.orden_nueva') }}">
+                    <i class="bi bi-plus-circle"></i> Nueva Orden
+                </a>
+            </li>
         </ul>
     </nav>
 
@@ -114,6 +137,9 @@
     </div>
 </div>
 
+<!-- Overlay para sidebar móvil -->
+<div class="sidebar-overlay d-lg-none" id="sidebarOverlay"></div>
+
 <!-- Bottom nav móvil -->
 {% block bottom_nav %}
 <nav class="bottom-nav d-lg-none">
@@ -133,6 +159,10 @@
         <i class="bi bi-building"></i>
         <span>Clientes</span>
     </a>
+    <a href="#" id="btnMenuMobile" onclick="toggleSidebarMenu(event)">
+        <i class="bi bi-list"></i>
+        <span>Menú</span>
+    </a>
 </nav>
 {% endblock %}
 {% endblock %}
@@ -140,6 +170,51 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
 <script>
+// Menú móvil toggle v1.0.9
+var sidebarMenuOpen = false;
+
+function toggleSidebarMenu(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    var sidebar = document.querySelector('.sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    var btnMenu = document.getElementById('btnMenuMobile');
+
+    if (sidebarMenuOpen) {
+        // Cerrar
+        sidebarMenuOpen = false;
+        sidebar.style.cssText = '';
+        overlay.style.cssText = 'display:none;';
+        document.body.style.overflow = '';
+        if (btnMenu) btnMenu.classList.remove('active');
+    } else {
+        // Abrir
+        sidebarMenuOpen = true;
+        sidebar.style.cssText = 'display:block !important; transform:translateX(0) !important; position:fixed; top:56px; left:0; width:260px; height:calc(100vh - 116px); z-index:9999; overflow-y:auto; background:#212529;';
+        overlay.style.cssText = 'display:block; position:fixed; top:56px; left:0; right:0; bottom:60px; background:rgba(0,0,0,0.5); z-index:9998;';
+        document.body.style.overflow = 'hidden';
+        if (btnMenu) btnMenu.classList.add('active');
+    }
+}
+
+// Cerrar al tocar overlay
+document.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('sidebarOverlay');
+    if (overlay) {
+        overlay.onclick = function() { toggleSidebarMenu(); };
+    }
+
+    // Cerrar al tocar links del sidebar
+    document.querySelectorAll('.sidebar a').forEach(function(link) {
+        link.onclick = function() {
+            if (sidebarMenuOpen) toggleSidebarMenu();
+        };
+    });
+});
+
 // Tours por página para Admin
 function getTourSteps() {
     const path = window.location.pathname;

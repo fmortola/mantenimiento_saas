@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
+from datetime import datetime
 from app import db
 from app.models.usuario import Usuario
 
@@ -62,6 +63,10 @@ def login():
                 session.pop('impersonate_tenant_id', None)
                 session.pop('impersonate_tenant_nombre', None)
 
+            # Verificar si acepto la politica de privacidad (excepto superadmin)
+            if not usuario.es_superadmin() and not usuario.acepto_politica:
+                return redirect(url_for('auth.aceptar_politica'))
+
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
@@ -78,6 +83,33 @@ def login():
             flash('Email o contrasena incorrectos.', 'danger')
 
     return render_template('auth/login.html')
+
+@auth_bp.route('/aceptar-politica', methods=['GET', 'POST'])
+@login_required
+def aceptar_politica():
+    # Si ya acepto, redirigir al dashboard
+    if current_user.acepto_politica:
+        return redirect(url_for('auth.index'))
+
+    if request.method == 'POST':
+        if request.form.get('acepto'):
+            current_user.acepto_politica = True
+            current_user.fecha_acepto_politica = datetime.utcnow()
+            db.session.commit()
+            flash('Gracias por aceptar nuestra politica de privacidad.', 'success')
+
+            # Redirigir al dashboard correspondiente
+            if current_user.es_admin():
+                return redirect(url_for('admin.dashboard'))
+            elif current_user.es_tecnico():
+                return redirect(url_for('tecnico.dashboard'))
+            elif current_user.es_cliente():
+                return redirect(url_for('cliente.dashboard'))
+
+            return redirect(url_for('auth.index'))
+
+    return render_template('auth/aceptar_politica.html')
+
 
 @auth_bp.route('/logout')
 @login_required

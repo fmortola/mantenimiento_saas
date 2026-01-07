@@ -91,6 +91,9 @@
                         </td>
                         <td class="text-end">
                             <div class="btn-group">
+                                <a href="{{ url_for('superadmin.tenant_backup', id=tenant.id) }}" class="btn btn-sm btn-outline-success" title="Descargar backup">
+                                    <i class="bi bi-download"></i>
+                                </a>
                                 <a href="{{ url_for('superadmin.acceder_como_tenant', id=tenant.id) }}" class="btn btn-sm btn-outline-info" title="Ver como tenant">
                                     <i class="bi bi-eye"></i>
                                 </a>

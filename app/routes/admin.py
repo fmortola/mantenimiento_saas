@@ -314,6 +314,35 @@ def equipo_editar(id):
     return render_template('admin/equipos/form.html', ubicacion=equipo.ubicacion, equipo=equipo,
                            tipos_equipo=tipos, condiciones=CONDICIONES_EQUIPO)
 
+@admin_bp.route('/equipos/<int:id>/historial')
+@login_required
+@admin_required
+def equipo_historial(id):
+    equipo = get_equipos_query().filter_by(id=id).first_or_404()
+
+    # Órdenes de trabajo del equipo
+    ordenes = OrdenTrabajo.query.filter_by(
+        equipo_id=equipo.id,
+        tenant_id=get_tenant_id()
+    ).order_by(OrdenTrabajo.fecha_creacion.desc()).all()
+
+    # Tickets del equipo
+    tickets = Ticket.query.filter_by(
+        equipo_id=equipo.id,
+        tenant_id=get_tenant_id()
+    ).order_by(Ticket.fecha_creacion.desc()).all()
+
+    # Mantenimientos del equipo
+    mantenimientos = MantenimientoEquipo.query.filter_by(
+        equipo_id=equipo.id
+    ).order_by(MantenimientoEquipo.fecha_inicio.desc()).all()
+
+    return render_template('admin/equipos/historial.html',
+                           equipo=equipo,
+                           ordenes=ordenes,
+                           tickets=tickets,
+                           mantenimientos=mantenimientos)
+
 # ==================== TIPOS DE EQUIPO ====================
 @admin_bp.route('/tipos-equipo')
 @login_required

@@ -9,12 +9,18 @@
         <small class="text-muted">Slug: {{ tenant.slug }}</small>
     </div>
     <div class="btn-group">
+        <a href="{{ url_for('superadmin.tenant_backup', id=tenant.id) }}" class="btn btn-success">
+            <i class="bi bi-download"></i> Backup
+        </a>
         <a href="{{ url_for('superadmin.acceder_como_tenant', id=tenant.id) }}" class="btn btn-info">
             <i class="bi bi-eye"></i> Ver como Tenant
         </a>
         <a href="{{ url_for('superadmin.tenant_editar', id=tenant.id) }}" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Editar
         </a>
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminarModal">
+            <i class="bi bi-trash"></i>
+        </button>
         <a href="{{ url_for('superadmin.tenants') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
@@ -249,6 +255,50 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Extender</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Tenant -->
+<div class="modal fade" id="eliminarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('superadmin.tenant_eliminar', id=tenant.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Eliminar Tenant</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong>ATENCION:</strong> Esta accion es IRREVERSIBLE.
+                        Se eliminaran permanentemente:
+                        <ul class="mb-0 mt-2">
+                            <li>Todos los usuarios del tenant</li>
+                            <li>Todos los clientes y ubicaciones</li>
+                            <li>Todos los equipos</li>
+                            <li>Todas las ordenes de trabajo y tickets</li>
+                            <li>Todos los mantenimientos</li>
+                            <li>Todas las fotos y archivos</li>
+                        </ul>
+                    </div>
+                    <p class="text-center">
+                        <strong>Se recomienda hacer un backup antes de eliminar.</strong>
+                    </p>
+                    <hr>
+                    <p>Para confirmar, escribe el slug del tenant:</p>
+                    <p class="text-center"><code>{{ tenant.slug }}</code></p>
+                    <div class="mb-3">
+                        <input type="text" name="confirmacion" class="form-control" placeholder="Escribe el slug aqui" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Eliminar Permanentemente
+                    </button>
                 </div>
             </form>
         </div>

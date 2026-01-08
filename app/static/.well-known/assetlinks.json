@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "ec.com.servitech.app",
+        "sha256_cert_fingerprints": ["DE:67:ED:99:9F:14:20:55:8B:59:92:53:B9:2E:78:FE:80:77:E6:93:52:D5:C7:DD:A5:81:7E:6E:BC:0D:92:A9"]
+      }
+    }]

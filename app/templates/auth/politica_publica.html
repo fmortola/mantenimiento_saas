@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Politica de Privacidad - ServTec</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .policy-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .policy-content { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2563eb; }
+        h5 { color: #333; margin-top: 25px; }
+    </style>
+</head>
+<body>
+    <div class="policy-container">
+        <div class="policy-content">
+            <div class="text-center mb-4">
+                <img src="{{ url_for('static', filename='images/icon-128.png') }}" alt="ServTec" style="width: 80px;">
+                <h1 class="mt-3">Politica de Privacidad</h1>
+                <p class="text-muted">ServTec - Sistema de Gestion de Servicio Tecnico</p>
+            </div>
+
+            <h5>1. Introduccion</h5>
+            <p>Bienvenido a ServTec, un sistema de gestion de servicio tecnico desarrollado por YoYoSoft - Soluciones Tecnologicas. Esta politica de privacidad describe como recopilamos, usamos, almacenamos y protegemos tu informacion personal cuando utilizas nuestra plataforma.</p>
+            <p>Al acceder y utilizar este sistema, aceptas los terminos descritos en esta politica. Si no estas de acuerdo con alguno de estos terminos, te pedimos que no utilices el sistema.</p>
+
+            <h5>2. Informacion que Recopilamos</h5>
+            <p>Recopilamos los siguientes tipos de informacion:</p>
+            <ul>
+                <li><strong>Datos de identificacion:</strong> Nombre completo, correo electronico, numero de telefono.</li>
+                <li><strong>Datos de acceso:</strong> Credenciales de inicio de sesion (la contrasena se almacena de forma encriptada).</li>
+                <li><strong>Datos de ubicacion:</strong> Direcciones de clientes y ubicaciones de equipos para la gestion de servicios.</li>
+                <li><strong>Datos de equipos:</strong> Informacion sobre equipos tecnicos incluyendo marca, modelo, numero de serie.</li>
+                <li><strong>Registros de actividad:</strong> Historial de ordenes de trabajo, tickets de soporte, mantenimientos realizados.</li>
+                <li><strong>Contenido multimedia:</strong> Fotografias tomadas durante los servicios tecnicos como evidencia del trabajo realizado.</li>
+                <li><strong>Firmas digitales:</strong> Firmas electronicas para confirmar la recepcion y conformidad de los servicios.</li>
+            </ul>
+
+            <h5>3. Uso de la Informacion</h5>
+            <p>La informacion recopilada se utiliza para:</p>
+            <ul>
+                <li>Gestionar y coordinar servicios tecnicos.</li>
+                <li>Mantener un historial de trabajos realizados en equipos.</li>
+                <li>Generar reportes y estadisticas de servicio.</li>
+                <li>Enviar notificaciones relacionadas con el servicio (tickets, ordenes, mantenimientos).</li>
+                <li>Mejorar la calidad del servicio y la experiencia del usuario.</li>
+                <li>Cumplir con obligaciones legales y contractuales.</li>
+            </ul>
+
+            <h5>4. Almacenamiento y Seguridad</h5>
+            <p>Implementamos medidas de seguridad tecnicas y organizativas para proteger tu informacion:</p>
+            <ul>
+                <li>Las contrasenas se almacenan utilizando algoritmos de hash seguros.</li>
+                <li>El acceso al sistema requiere autenticacion.</li>
+                <li>Los datos se almacenan en servidores seguros.</li>
+                <li>El acceso a la informacion esta restringido segun el rol del usuario.</li>
+                <li>Se realizan copias de seguridad periodicas.</li>
+            </ul>
+
+            <h5>5. Comparticion de Datos</h5>
+            <p>No vendemos ni compartimos tu informacion personal con terceros, excepto en los siguientes casos:</p>
+            <ul>
+                <li>Cuando sea necesario para la prestacion del servicio contratado.</li>
+                <li>Cuando sea requerido por ley o autoridad competente.</li>
+                <li>Con el consentimiento expreso del usuario.</li>
+            </ul>
+
+            <h5>6. Derechos del Usuario</h5>
+            <p>Como usuario, tienes derecho a:</p>
+            <ul>
+                <li><strong>Acceso:</strong> Solicitar informacion sobre los datos que tenemos sobre ti.</li>
+                <li><strong>Rectificacion:</strong> Corregir datos inexactos o incompletos.</li>
+                <li><strong>Eliminacion:</strong> Solicitar la eliminacion de tus datos personales.</li>
+                <li><strong>Portabilidad:</strong> Recibir tus datos en un formato estructurado.</li>
+                <li><strong>Oposicion:</strong> Oponerte al tratamiento de tus datos en ciertas circunstancias.</li>
+            </ul>
+            <p>Para ejercer estos derechos, contacta al administrador de tu organizacion o a nuestro equipo de soporte.</p>
+
+            <h5>7. Retencion de Datos</h5>
+            <p>Conservamos tu informacion mientras mantengas una cuenta activa en el sistema o mientras sea necesario para cumplir con los fines descritos en esta politica. Los datos pueden ser retenidos por periodos adicionales cuando sea requerido por ley.</p>
+
+            <h5>8. Cookies y Tecnologias Similares</h5>
+            <p>Este sistema utiliza cookies de sesion necesarias para su funcionamiento. Estas cookies son esenciales para:</p>
+            <ul>
+                <li>Mantener tu sesion iniciada.</li>
+                <li>Recordar tus preferencias de usuario.</li>
+                <li>Garantizar la seguridad de tu cuenta.</li>
+            </ul>
+
+            <h5>9. Notificaciones Push</h5>
+            <p>Si activas las notificaciones push, recibiras alertas sobre:</p>
+            <ul>
+                <li>Nuevos tickets asignados.</li>
+                <li>Actualizaciones en ordenes de trabajo.</li>
+                <li>Recordatorios de mantenimientos programados.</li>
+            </ul>
+            <p>Puedes desactivar las notificaciones en cualquier momento desde la configuracion de tu navegador o dispositivo.</p>
+
+            <h5>10. Cambios en la Politica</h5>
+            <p>Nos reservamos el derecho de modificar esta politica de privacidad en cualquier momento. Los cambios seran notificados a traves del sistema y podra requerirse una nueva aceptacion.</p>
+
+            <h5>11. Contacto</h5>
+            <p>Si tienes preguntas sobre esta politica de privacidad o sobre el tratamiento de tus datos, puedes contactarnos a traves de:</p>
+            <ul>
+                <li><strong>Email:</strong> famb@me.com</li>
+                <li><strong>Horario de atencion:</strong> Lunes a Viernes, 10:00 - 16:00</li>
+            </ul>
+
+            <div class="text-center mt-5 pt-3 border-top">
+                <p class="text-muted mb-1"><strong>Ultima actualizacion:</strong> Enero 2026</p>
+                <p class="text-muted mb-0"><strong>Version:</strong> 1.0</p>
+                <p class="text-muted mt-3">&copy; 2026 YoYoSoft - Todos los derechos reservados</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

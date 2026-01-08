@@ -15,6 +15,24 @@ def manifest():
 def service_worker():
     return send_from_directory(current_app.static_folder + '/js', 'sw.js', mimetype='application/javascript')
 
+
+@auth_bp.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return send_from_directory(current_app.static_folder + '/.well-known', 'assetlinks.json', mimetype='application/json')
+
+
+@auth_bp.route('/politica-privacidad')
+def politica_privacidad():
+    """Pagina publica de politica de privacidad (para Google Play / App Store)"""
+    return render_template('auth/politica_publica.html')
+
+
+@auth_bp.route('/eliminar-cuenta')
+def solicitar_eliminacion():
+    """Pagina publica para solicitar eliminacion de cuenta (requerido por Google Play)"""
+    return render_template('auth/solicitar_eliminacion.html')
+
+
 @auth_bp.route('/')
 def index():
     if current_user.is_authenticated:

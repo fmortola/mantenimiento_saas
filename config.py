@@ -15,8 +15,9 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
 
     # Configuracion SaaS
-    SAAS_NAME = os.environ.get('SAAS_NAME') or 'TecniGest SaaS'
-    SAAS_DOMAIN = os.environ.get('SAAS_DOMAIN') or 'tecnigest.com'
+    SAAS_NAME = os.environ.get('SAAS_NAME') or 'ServTec SaaS'
+    SAAS_DOMAIN = os.environ.get('SAAS_DOMAIN') or 'servitech.com.ec'
+    SITE_URL = os.environ.get('SITE_URL') or 'https://m.servitech.com.ec'
 
     # Configuración de cookies para compatibilidad con Safari
     SESSION_COOKIE_SAMESITE = 'Lax'

@@ -5,6 +5,19 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.1.4] - 2026-01-08
+
+### Agregado
+- Pagina publica de politica de privacidad (`/politica-privacidad`)
+- Pagina para solicitar eliminacion de cuenta (`/eliminar-cuenta`)
+- Digital Asset Links para Android (`/.well-known/assetlinks.json`)
+- Manifest mejorado para PWA (screenshots, shortcuts, related_applications)
+- Configuracion SITE_URL en config.py
+- Carpeta screenshots para capturas de Play Store
+
+### Configurado
+- App lista para Google Play Store (pruebas internas funcionando)
+
 ## [1.1.3] - 2026-01-07
 
 ### Agregado

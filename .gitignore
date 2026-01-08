@@ -43,3 +43,6 @@ app/static/images/uploads/*
 dist/
 build/
 *.egg-info/
+
+# App builds (contiene keystores sensibles)
+builds/
